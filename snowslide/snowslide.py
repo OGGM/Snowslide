@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from utils import *
+from snowslide.snowslide.functions import *
 from display_2Dresults import *
 from display_3Dresults import *
 

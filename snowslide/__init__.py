@@ -8,14 +8,14 @@ __version__ = '0.0.1'
 # have to know about the internal structure of a package, they just want
 # to know what functionality it provides
 
-from snowslide.utils import dem_flow
-from snowslide.utils import precipitations
-from snowslide.utils import precipitations_base
-from snowslide.utils import SND_max_exponential
-from snowslide.utils import snow_routing
-from snowslide.utils import slope
-from snowslide.utils import reframe_tif
-from snowslide.utils import resampling_dem
+from snowslide.snowslide.functions import dem_flow
+from snowslide.snowslide.functions import precipitations
+from snowslide.snowslide.functions import precipitations_base
+from snowslide.snowslide.functions import SND_max_exponential
+from snowslide.snowslide.functions import snow_routing
+from snowslide.snowslide.functions import slope
+from snowslide.snowslide.functions import reframe_tif
+from snowslide.snowslide.functions import resampling_dem
 
 from snowslide.snowslide import snowslide_base
 from snowslide.snowslide import snowslide_complete
