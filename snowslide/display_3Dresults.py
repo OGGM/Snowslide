@@ -3,6 +3,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np 
 from mayavi import mlab
+import rasterio
 
 def save_plots3D(path_dem,SND_plot=None,save_path=None,
                  param_camera={'factor':10,'cellsize':30,'azimuth':0,'elevation':45,'distance':'auto'}) :

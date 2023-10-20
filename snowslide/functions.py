@@ -9,7 +9,6 @@ import rasterio
 from rasterio.windows import Window
 from rasterio.enums import Resampling
 import pysheds
-import mayavi
 from pysheds.grid import Grid
 
 #from snowslide.snowslide import cfg
@@ -439,4 +438,3 @@ def resampling_dem(src_path,dst_path,factor) :
             dst.write(new_dem, 1)
 
     return new_dem
-

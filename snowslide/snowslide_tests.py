@@ -6,7 +6,7 @@ This file contains all functions used to assert tests to snowslide
 import numpy as np
 import rasterio 
 from math import *
-from snowslide import snowslide_base
+from snowslide.snowslide_main import snowslide_base
 
 def ideal_concave_dem(nb_pixels,mean_slope,factor) :
     """ This function creates an ideal concave dem to test mass conservation of snowslide
