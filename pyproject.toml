@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "snowslide"
+version = "0.0.1"
+authors = [
+  { name="Guillem Carcanade", email="guillem.carcanade@student-cs.fr" },
+]
+description = "A simple algorithm that computes the redistribution of snow by gravitationnal transport."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD 3",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/GuillemCF/Snowslide"
+"Bug Tracker" = "https://github.com/GuillemCF/Snowslide/issues"
