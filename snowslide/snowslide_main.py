@@ -4,20 +4,21 @@ from snowslide.functions import *
 from snowslide.display_2Dresults import *
 from snowslide.display_3Dresults import *
 
-def snowslide_complete(path_dem,epsilon=0.001,resolution=30,
+def snowslide_complete(path_dem,SND0,epsilon=0.001,
                        param_simul={"simul_name":'glacier',"save_path":None,"save_fig":False,"save_array":True,"plot":'2D'},
                        param_expo={"a":0.14,"c":145,"min":0.05},
                        param_routing={"routing":'mfd',"preprocessing":True},
-                       param_prcpt={"init":False,"SND0":None,"quantity":1,"isotherme":0,"x":None,"y":None},
                        param_camera={"azimuth":0,"elevation":45,"distance":'auto',"facteur":10},
-                       limit_colorbar={"limit":False,"vmin":0,"vmax":None}) :
+                       fix_colorbar={"limit":False,"vmin":0,"vmax":None}) :
     """ This function operates the gravitationnal transport of the snow from an initial map of snow heights and a dem
     Snowslide_complete is the snowslide algorithm with the most complete display functionalities allowed for the user.
 
     Parameters
     ----------
     path_dem: str
-        Path to the dem file (.tif)  
+        Path to the dem file (.tif)
+    SND0: numpy.ndarray
+        Numpy matrix of the same size as the dem containing the initial snow depths (derived from precipitation).
     epsilon: float
         Condition to get out the loop (convergence is considered reached when indicateur < epsilon). Default is 0.001.
     resolution: float
@@ -50,20 +51,6 @@ def snowslide_complete(path_dem,epsilon=0.001,resolution=30,
             routing method ('mfd' or 'd8')
         preprocessing: bolean
             activate or deactivate preprocessing of the DEM. Deactivate it affects convergence. 
-    param_prcpt: dictionary
-            Information to initialize ideally SND with precipitation function. 
-            init: Bolean 
-                If activated SND is initialized with a matrix chosen by the user 
-            SND0: np matrix
-                Initialization of SND chosen by the user 
-            quantity: float
-                height of snow added in case of uniform initilization of SND
-            isotherme: float
-                altitude under which solid precipitation will be initialized with 0
-            x: list of 2 integers : [xmin,xmax]
-                longitude window outside which solid precipitation is considerd 0 % (in pixels indices)
-            y: list of 2 integers : [ymin,ymax]
-                latitude window outside which solid precipitation is considerd 0 % (in pixels indices)
     param_camera: dictionary
         Settings that allow the user to control the 3D display offered by mayavi
         param_camera['factor']: float, multiplication of snow heights to make them easier to see. Default is 10.
@@ -74,13 +61,13 @@ def snowslide_complete(path_dem,epsilon=0.001,resolution=30,
     More information about viewing parameters can be find in the following mayavi documentation:
     'https://docs.enthought.com/mayavi/mayavi/auto/mlab_camera.html'
 
-    limit_colorbar: dictionary
+    fix_colorbar: dictionary
         This fix the range of the colorbar to make the animation easier to read (with a fixed caption) 
-        limit_colorbar['limit']: bolean
+        fix_colorbar['limit']: bolean
             Activate limit_colorbar or not
-        limit_colorbar['vmin']: float
+        fix_colorbar['vmin']: float
             minimum value displayed
-        limit_colorbar['vmax']: float
+        fix_colorbar['vmax']: float
             maximum value displayed
 
     Returns
@@ -99,6 +86,7 @@ def snowslide_complete(path_dem,epsilon=0.001,resolution=30,
         
         # useful dem information for registering output as a .tif file
     get_info = rasterio.open(path_dem)
+    resolution = float(get_info.res[0])
     crs = str(get_info.crs)
     transform = get_info.transform
 
@@ -108,11 +96,8 @@ def snowslide_complete(path_dem,epsilon=0.001,resolution=30,
 
         # initialization of snow quantities 
     SND_tot = []
-    if param_prcpt["init"] == False :
-        SND = precipitations(path_dem,param_prcpt["quantity"],param_prcpt["isotherme"],param_prcpt["zone"],param_prcpt["x"],param_prcpt["y"])
-    else : 
-        SND = param_prcpt["SND"]
-    SND_tot.append(SND.copy())
+    SND = np.copy(SND0)
+    SND_tot.append(np.copy(SND))
 
 
     print('Variables have been initialized')
@@ -120,18 +105,21 @@ def snowslide_complete(path_dem,epsilon=0.001,resolution=30,
         # Creation of the folder in which the simulation will be saved
     if param_simul["save_path"]==None:
         save_path = os.getcwd()
+    else:
+        save_path = param_simul["save_path"]
     simul_name = f'Snowslide_{datetime.date.today()}_{param_simul["simul_name"]}_simul{param_simul["plot"]}_routing_{param_routing["routing"]}'           
     simul_folder = save_path + "/" + simul_name
     if not os.path.exists(simul_folder):
         os.makedirs(simul_folder)
-        if param_simul["plot"]=='2D':
-            plots_path = simul_folder + "/2D_plots"
-            if not os.path.exists(plots_path):
-                os.makedirs(plots_path)
-        if param_simul["plot"]=='3D':
-            plots_path = simul_folder + "/3D_plots"
-            if not os.path.exists(plots_path):
-                os.makedirs(plots_path)
+    if param_simul["plot"]=='2D':
+        plots_path = simul_folder + "/2D_plots"
+        if not os.path.exists(plots_path):
+            os.makedirs(plots_path)
+    if param_simul["plot"]=='3D':
+        plots_path = simul_folder + "/3D_plots"
+        if not os.path.exists(plots_path):
+            os.makedirs(plots_path)
+            
 
     print('The simulation folder has been created, launching simulation...')
 
@@ -146,8 +134,6 @@ def snowslide_complete(path_dem,epsilon=0.001,resolution=30,
         HNSO_slope = slope(HNSO,resolution,resolution)
         SND_max = SND_max_exponential(HNSO_slope,param_expo["a"],param_expo["c"],param_expo["min"])
         SND = snow_routing(SND,SND_max,flow_dir,param_routing["routing"])
-        isotherme = param_prcpt["isotherme"]
-        SND[np.where((SND==0) & (dem<isotherme))]= np.nan
         
                     ### Exit conditions ###
 
@@ -155,7 +141,7 @@ def snowslide_complete(path_dem,epsilon=0.001,resolution=30,
         indicateur = np.sum((SND-SND1)**2) # Exit condition when the L2 norm of the distance 
         # between the matrices of two iterations converge towards 0. 
         convergence.append(indicateur)
-        SND_tot.append(SND.copy())
+        SND_tot.append(np.copy(SND))
     
         # 2nd exit condition if indicateur converge towards a constant that is not 0. 
         if iter > 5 : 
@@ -173,7 +159,7 @@ def snowslide_complete(path_dem,epsilon=0.001,resolution=30,
                 ylabel = 'latitude'
                 figure_name = f'/figure{param_simul["plot"]}_SND_iter{iter}.png' 
                 save_path = plots_path + figure_name  
-                save_plots2D(SND_tot[iter],save_path=save_path,legend=legend,title=title,xlabel=xlabel,ylabel=ylabel,limit_colorbar=limit_colorbar)
+                save_plots2D(SND_tot[iter],save_path=save_path,legend=legend,title=title,xlabel=xlabel,ylabel=ylabel,fix_colorbar=fix_colorbar)
         
             if param_simul["plot"]=='3d' :
                 figure_name = f'/figure{param_simul["plot"]}_SND_iter{iter}.png'
@@ -190,7 +176,7 @@ def snowslide_complete(path_dem,epsilon=0.001,resolution=30,
         gif_name = f"Snowslide_{param_simul['simul_name']}_animation.gif"
         fig_names = f"figure{param_simul['plot']}_SND_iter"
         n = np.shape(SND_tot)[0] - 1
-        create_giff(plots_path,dst_path=simul_folder,gif_name=gif_name,fig_names=fig_names,n=n)
+        create_giff(plots_path,dst_path=simul_folder,gif_name=gif_name,fig_names=fig_names,n=n-1)
     
     # Save the matrices iterations in a numpy file
     if param_simul["save_array"] == True : 

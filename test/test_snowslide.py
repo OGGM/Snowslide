@@ -183,8 +183,50 @@ def test_run_snowslide():
     bolean=True
     try:
         snowslide_base(dem_path,SND0=SND0,param_routing=param_routing)
-    except Exception as e:
+    except:
         bolean=False
     assert bolean==True
 
+def test_flat_holdSnow():
+    """ This function tests if flat areas receive more snow than steep areas after convergence. 
+    The distinction between both areas is 40°. 
+    """
 
+    def create_ideal_dem(alt_max,alt_min,res) :
+        vector1 = np.arange(alt_max,alt_min,-res)
+        vector2 = np.zeros(25)
+        vector = np.concatenate((vector1,vector2))
+        matrix = np.tile(vector,(25,1))
+
+        return matrix 
+
+    dem = create_ideal_dem(750,0,30)
+    transform = rasterio.transform.from_origin(0, 0, 20, 20)
+    crs = rasterio.crs.CRS.from_epsg(4326)
+    dem_path = "/Users/llemcf/Desktop/Stage_IGE_2023/1ideal_dem.tif"
+    with rasterio.open(dem_path, "w", driver="GTiff", height=dem.shape[0], width=dem.shape[1], count=1, dtype=dem.dtype, crs=crs, transform=transform) as dst:
+            dst.write(dem, 1)
+
+    param_routing={"routing":'mfd',"preprocessing":True}
+    SND0 = np.zeros(np.shape(dem))
+    SND0[1:-1,1:-1] = 1
+
+    # Simulation using snowslide 
+    SND = snowslide_base(dem_path,SND0=SND0,param_routing=param_routing)
+    slope = slope(dem,20,20)
+
+    steep_area = np.sum(SND[np.where(slope >= 40)])
+    flat_area = np.sum(SND[np.where(slope < 40)])
+
+    assert steep_area < flat_area, ("Snow has accumulated more on steep areas.")
+
+def test_slope_limits() :
+    """ This function checks that the slope calculation gives values between 0 and 90 degrees 
+    """
+    dem_path = "/Users/llemcf/Desktop/Stage_IGE_2023/GitHub_snowslide/snowslide/test/data/DEM_Mt_blanc_Talefre.tif"
+    dem = rasterio.open(dem_path).read(1)
+    res_x , res_y = rasterio.open(dem_path).res 
+    slope = slope(dem,res_x,res_y)
+    
+    assert np.min(slope) > 0, ("Error, the slope has values under 0°.")
+    assert np.max(slope) < 90, ("Error, the slope has values over 90°.")
