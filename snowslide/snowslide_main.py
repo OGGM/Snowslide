@@ -212,12 +212,8 @@ def snowslide_base(path_dem,SND0,save_path=None,epsilon=1e-3,
         Path where the user want to save the data produced (.tif file of the SND matrix). Default is None.
         If no path is indicated, no data is stored (only registered as a variable when running the function)
         If a path is indicated the matrix will be saved as 'converged_SND.tif' file
-    localisation: str
-        Name of the folder containing the results (e.g. name of the glacier). Default is None. 
     epsilon: float
-        Condition to get out the loop (convergence is considered reached when indicateur < epsilon). Default is 0.001.
-    resolution: float
-        Resolution of the dem assuming the pixels are square. Default is 30. (in meters)
+        Condition to get out the loop (convergence is considered reached when indicateur < epsilon). Default is 1e-3.
     param_expo: dictionary
         The maximum snow height each pixel can store is computed as an exponential function of the slope. Parameters are the following:
             SND_max=c*exp(a*slope)
