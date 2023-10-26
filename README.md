@@ -74,18 +74,18 @@ that test the expected behaviour of snowslide algorithm.
 
 Through a main function defined in snowslide_main, snowslide uses a number of functions which are
 present in the ``functions.py`` file. These are the following : 
-- dem_flow() : This function can preprocess the dem (or not) and compute the flow direction based on the 
+- **dem_flow()** : This function can preprocess the dem (or not) and compute the flow direction based on the 
     total elevation surface (dem + snow depth)
-- precipitations_base() : This function initialize an ideal SND matrix based on solid precipitation information
-- slope() : This function calculate a slope matrix based on the dem matrix
-- snow_routing() : That function routes the snow based on the routing method chosen ('mfd' or 'd8'). 
+- **precipitations_base()** : This function initialize an ideal SND matrix based on solid precipitation information
+- **slope()** : This function calculate a slope matrix based on the dem matrix
+- **snow_routing()** : That function routes the snow based on the routing method chosen ('mfd' or 'd8'). 
     It is called at each iteration. 
-- SND_max_exponential(): Function that compute the maximal height of snow each pixel can store based on the slope. 
+- **SND_max_exponential()**: Function that compute the maximal height of snow each pixel can store based on the slope. 
     The function is an exponential and parameters are estimated from 'Bernhardt & Schulz 2007'.
-- reframe_tif() : To quickly crop a DEM, retaining only the area of interest. It displays the initial DEM, 
+- **reframe_tif()** : To quickly crop a DEM, retaining only the area of interest. It displays the initial DEM, 
     and the user can then enter the x and y windows of the zone to be retained so that the function can store 
     a new DEM entitled: 'reframed_dem'.
-- resampling_dem() : This function allows to resample a dem to another resolution. It can be used to increase 
+- **resampling_dem()** : This function allows to resample a dem to another resolution. It can be used to increase 
     the speed of calculations if high resolution is not required.
 
 The ``display_2Dresults.py`` and ``display_3Dresults.py`` are used in snowslide_complete() function defined in 
@@ -96,8 +96,8 @@ gives an example of using snowslide first in a snowslide workflow and then in an
 
 ## How to use snowslide in a classic workflow ?
 
-See the notebook in snowslide/example/How_to_use_snowslide.ipynb
+See the notebook in https://github.com/GuillemCF/Snowslide/blob/main/example/How_to_use_snowslide.ipynb
 
 ## How to use snowslide in a OGGM workflow
 
-See the notebook in snowslide/example/How_to_use_OGGMxSnowslide.ipynb
+See the notebook in https://github.com/GuillemCF/Snowslide/blob/main/example/How_to_use_OGGMxSnowslide.ipynb
