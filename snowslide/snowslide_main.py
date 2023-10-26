@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 from snowslide.functions import *
 from snowslide.display_2Dresults import *
-from snowslide.display_3Dresults import *
+#from snowslide.display_3Dresults import * Don't need it for now
 
 def snowslide_complete(path_dem,SND0,epsilon=0.001,
                        param_simul={"simul_name":'glacier',"save_path":None,"save_fig":False,"save_array":True,"plot":'2D'},

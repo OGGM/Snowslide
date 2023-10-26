@@ -183,8 +183,10 @@ def test_run_snowslide():
     bolean=True
     try:
         snowslide_base(dem_path,SND0=SND0,param_routing=param_routing)
-    except:
+    except Exception as e:
         bolean=False
+        print(e)
+        
     assert bolean==True
 
 def test_flat_holdSnow():
@@ -220,6 +222,8 @@ def test_flat_holdSnow():
 
     assert steep_area < flat_area, ("Snow has accumulated more on steep areas.")
 
+    # Supprimer le fichier créé
+
 def test_slope_limits() :
     """ This function checks that the slope calculation gives values between 0 and 90 degrees 
     """
@@ -230,3 +234,28 @@ def test_slope_limits() :
     
     assert np.min(slope) > 0, ("Error, the slope has values under 0°.")
     assert np.max(slope) < 90, ("Error, the slope has values over 90°.")
+
+def test_nosnow_nochanges() :
+    dem_path = "snowslide/test/data/DEM_Mt_blanc_Talefre.tif"
+    dem = rasterio.open(dem_path).read(1)
+    SND0 = np.zeros(np.shape(dem))
+    SND = snowslide_base(dem_path,SND0=SND0)
+
+    assert np.array_equal(SND, SND0)  
+
+def test_noslope_nochanges():
+    dem = np.zeros((100, 100), dtype=np.float32)
+    transform = rasterio.transform.from_origin(0, 0, 1, 1)
+    path = 'snowslide/test/data/flat_dem.tif'
+    with rasterio.open(path, 'w', driver='GTiff', 
+                       height=dem.shape[0], width=dem.shape[1], count=1, 
+                       dtype=str(dem.dtype), crs='+proj=latlong', transform=transform) as dst:
+        dst.write(dem, 1)
+
+    SND0 = np.full(np.shape(dem),1.0)
+    SND = snowslide_base(path,SND0=SND0)
+
+    assert np.array_equal(SND, SND0) 
+
+
+
