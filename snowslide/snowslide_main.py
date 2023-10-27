@@ -2,6 +2,11 @@ import os
 from datetime import datetime
 from snowslide.functions import *
 from snowslide.display_2Dresults import *
+
+# Module logger
+import logging
+log = logging.getLogger(__name__)
+
 #from snowslide.display_3Dresults import * Don't need it for now
 
 def snowslide_complete(path_dem,SND0,epsilon=0.001,
@@ -195,10 +200,10 @@ def snowslide_complete(path_dem,SND0,epsilon=0.001,
     
     return SND,SND_tot,convergence
 
-def snowslide_base(path_dem,SND0,save_path=None,epsilon=1e-3,
-                     param_expo={"a":0.14,"c":145,"min":0.05},
-                     param_routing={"routing":'mfd',"preprocessing":True}) :
-    
+def snowslide_base(path_dem, SND0, save_path=None, epsilon=1e-3,
+                   param_expo={"a":0.14, "c":145, "min":0.05},
+                   param_routing={"routing":'mfd', "preprocessing":True},
+                   glacier_id=''):   
     """ This function operates the gravitationnal transport of the snow from an initial map of snow heights and a dem.
     Snowslide_base is the fastest computing snowslide algorithm with very basic display functionalities allowed for the user.
 
@@ -228,7 +233,9 @@ def snowslide_base(path_dem,SND0,save_path=None,epsilon=1e-3,
         routing: str 
             routing method ('mfd' or 'd8')
         preprocessing: bolean
-            activate or deactivate preprocessing of the DEM. Deactivate it affects convergence. 
+            activate or deactivate preprocessing of the DEM. Deactivate it affects convergence.
+    glacier_id : str, optional
+        for logging only: add the name of the glacier to the log messages
 
     Returns
     -------
@@ -252,7 +259,7 @@ def snowslide_base(path_dem,SND0,save_path=None,epsilon=1e-3,
         # initialization of initial snow depths
     SND = np.copy(SND0)
 
-    print('Variables have been initialized, launching the simulation...')
+    log.debug(f'{glacier_id}variables have been initialized, launching the simulation...')
 
                 ### Core part of the code ###                                                    
 
@@ -281,7 +288,7 @@ def snowslide_base(path_dem,SND0,save_path=None,epsilon=1e-3,
             if speed < 0 and abs(speed)<epsilon:
                 indicateur = 0
 
-    print("The algorithm converged in :",iter," iterations")
+    log.info(f"{glacier_id}the algorithm converged in {iter} iterations")
     
     # Saving the output as .tif file with same projection and properties as the dem
     if save_path!=None :
@@ -290,6 +297,6 @@ def snowslide_base(path_dem,SND0,save_path=None,epsilon=1e-3,
                    count=1, dtype=SND.dtype, crs=crs, transform=transform) as dst:
             dst.write(SND, 1)
         
-        print(f"The file has been stored in the following location {output_path}")
+        log.debug(f"{glacier_id}the file has been stored in the following location: {output_path}")
 
     return SND

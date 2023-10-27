@@ -39,7 +39,7 @@ def snowslide_to_gdir(gdir,routing='mfd'):
     # Launch snowslide simulation with idealized 1m initial snow depth
     SND0 = np.full(np.shape(ds.topo),float(1.0))
     param_routing={"routing":routing,"preprocessing":True}
-    SND = snowslide_base(path_to_dem,SND0=SND0,param_routing=param_routing)    
+    SND = snowslide_base(path_to_dem,SND0=SND0,param_routing=param_routing, glacier_id=f'({gdir.rgi_id}) ')    
 
     # Write
     with utils.ncDataset(gdir.get_filepath('gridded_data'), 'a') as nc:
@@ -60,22 +60,24 @@ def snowslide_statistics(gdir):
     """ Gather statistics about the Snowslide snow redistribution
     """
     resolution = abs(gdir.grid.dx)
+
     d = dict()
     # Easy stats - this should always be possible
     d['rgi_id'] = gdir.rgi_id
     d['rgi_region'] = gdir.rgi_region
     d['rgi_subregion'] = gdir.rgi_subregion
     d['rgi_area_km2'] = gdir.rgi_area_km2
+    d['map_dx'] = resolution
     d['snowslide_1m_glacier_average'] = np.NaN
-    d['snowslide_deposit_area'] = np.NaN
-    d['snowslide_deposit_volume'] = np.NaN
+    d['snowslide_deposit_area_km2'] = np.NaN
+    d['snowslide_deposit_volume_km3'] = np.NaN
 
     try:
         with xr.open_dataset(gdir.get_filepath('gridded_data')) as ds:
             map_result = ds['snowslide_1m'].where(ds['glacier_mask'], np.NaN).load()
             d['snowslide_1m_glacier_average'] = map_result.mean().data
-            d['snowslide_deposit_area'] = float(map_result.where(map_result==1,drop=True).count()) * resolution**2
-            d['snowslide_deposit_volume'] = float(map_result.where(map_result==1,drop=True).count()) * resolution**2
+            d['snowslide_deposit_area_km2'] = float(map_result.where(map_result>1, drop=True).count()) * resolution**2 * 1e-6
+            d['snowslide_deposit_volume_km3'] = float(map_result.where(map_result>1, drop=True).sum()) * resolution**2 * 1e-9
     except (FileNotFoundError, AttributeError, KeyError):
         pass
 
