@@ -429,7 +429,7 @@ def resampling_dem(src_path,dst_path,factor) :
         profile.update({
         'width': dataset.width*factor,
         'height': dataset.height*factor,
-        'transform': dataset.transform * dataset.transform.scale(factor),
+        'transform': dataset.transform * dataset.transform.scale(1/factor),
         'dtype': 'float32'
         })
 
