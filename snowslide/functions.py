@@ -12,8 +12,6 @@ import pysheds
 from pysheds.grid import Grid
 import pandas as pd
 
-#from snowslide.snowslide import cfg
-
 # Main functions used in the heart of snowslide simulations
 
 def dem_flow(HNSO,grid,routing,preprocessing) :
@@ -440,7 +438,7 @@ def resampling_dem(src_path,dst_path,factor) :
 
     return new_dem
 
-def initialize_snowslide_from_SAFRAN(dem_path,ds_paths,massif_id=3,frequency="monthly",snow_density=150) :
+def initialize_snowslide_from_SAFRAN(dem_path,ds_paths,massif_id=3,frequency="M",snow_density=150) :
     """ Function that creates SND0 matrices to initialize snowslide from SAFRAN precipitation data
 
     Parameters
@@ -450,7 +448,13 @@ def initialize_snowslide_from_SAFRAN(dem_path,ds_paths,massif_id=3,frequency="mo
     massif_id: int
         Id of the mountain range we want to use the data from
     frequency: str 
-        Specifies the frequency over which snowslide is used. For now only monthly is available (see report).
+        Specifies the frequency over which snowslide is used.
+        'D' : Day
+        'W' : Week
+        'M' : Month
+        'Q' : quarter
+        'A' : Year
+    You can also specify a diferent frequency with for example '2M' that means '2 months'. 
     
     Outputs
     -------
@@ -467,7 +471,7 @@ def initialize_snowslide_from_SAFRAN(dem_path,ds_paths,massif_id=3,frequency="mo
 
     # (1) - Preprocessing the SAFRAN netcdf data
 
-    def preprocess_SAFRAN_precipitations(ds_path,massif_id) : 
+    def preprocess_SAFRAN_precipitations(ds_path,massif_id) :
         """ Function that preprocess SAFRAN data in order to prepare initialization of precipitations matrices for Snowslide
         SAFRAN data is available at : "https://www.aeris-data.fr/en/landing-page/?uuid=865730e8-edeb-4c6b-ae58-80f95166509b#v2020.2"
 
@@ -506,13 +510,19 @@ def initialize_snowslide_from_SAFRAN(dem_path,ds_paths,massif_id=3,frequency="mo
         # Realizing binning operation by averaging values by altitude bands over the whole 'massif' (mountain range)
         ds = ds.groupby_bins('ZS',altitude_bin).mean("Number_of_points")
 
-        # Summing Snowfall rates to obtain monthly values
-        if frequency=="monthly" : # Propose other frequencies in the future 
-            ds_month =  ds.resample(time='M').sum(dim='time')
-            dates = pd.DatetimeIndex(ds_month.time)
+        # Summing Snowfall rates to obtain values at some chosen frequency
+        ds_resampled = ds.resample(time=frequency).sum(dim='time')
+        dates = pd.DatetimeIndex(ds_resampled.time)
+        if 'A' in frequency : # Yearly frequency 
+            # jours_par_an = np.array(dates.days_in_year)
+            ds_snowf = ds_resampled.Snowf*365*24 # Méthod 'En attendant mieux' car 365 ne prend pas en compte les années bisextiles mais on commet une très faible erreur !!
+        if 'M' in frequency : # Monthly frequency 
             jours_par_mois = np.array(dates.days_in_month)
-
-            ds_snowf = ds_month.Snowf*jours_par_mois.reshape(-1, 1)*24
+            ds_snowf = ds_resampled.Snowf*jours_par_mois.reshape(-1, 1)*24
+        if 'W' in frequency: # Weekly frequency
+            ds_snowf = ds_resampled.Snowf*24*7
+        if 'D' in frequency: # Daily frequency
+            ds_snowf = ds_resampled.Snowf*24
 
         # We make sure we don't have repetition with dates 
         ds_snowf = ds_snowf.sel(time=slice(f"{ds.attrs['time_coverage_start'][:4]}-08-01",f"{round(float(ds.attrs['time_coverage_start'][:4]))+1}-07-31"))
@@ -544,4 +554,4 @@ def initialize_snowslide_from_SAFRAN(dem_path,ds_paths,massif_id=3,frequency="mo
     # Getting SND in m instead of kg/m2
     precipitations = precipitations / snow_density
 
-    return precipitations 
+    return precipitations
