@@ -10,6 +10,7 @@ from rasterio.windows import Window
 from rasterio.enums import Resampling
 import pysheds
 from pysheds.grid import Grid
+import pandas as pd
 
 #from snowslide.snowslide import cfg
 
@@ -438,3 +439,109 @@ def resampling_dem(src_path,dst_path,factor) :
             dst.write(new_dem, 1)
 
     return new_dem
+
+def initialize_snowslide_from_SAFRAN(dem_path,ds_paths,massif_id=3,frequency="monthly",snow_density=150) :
+    """ Function that creates SND0 matrices to initialize snowslide from SAFRAN precipitation data
+
+    Parameters
+    ----------
+    ds_path: list
+        List of the paths to anual xarray files downloaded through aeris-data web page
+    massif_id: int
+        Id of the mountain range we want to use the data from
+    frequency: str 
+        Specifies the frequency over which snowslide is used. For now only monthly is available (see report).
+    
+    Outputs
+    -------
+    It stores in a specified folder a numpy matrix containing an SND initialization on a monthly frequency
+    
+    Improvements to be made :
+    ------------------------
+        - user should have the possibility to choose daily, weekly, monthly or annual frequence ...
+        - Values are always averaged within a whole mountain range based on 'massif_id' --> should be possible to either choose 'nearest station data'
+        - It must be verified that this work on all sort of SAFRAN dataset (add try and if loops to be less specific)
+        - It could be interesting to download directly the data from Aerius data portal
+
+    """
+
+    # (1) - Preprocessing the SAFRAN netcdf data
+
+    def preprocess_SAFRAN_precipitations(ds_path,massif_id) : 
+        """ Function that preprocess SAFRAN data in order to prepare initialization of precipitations matrices for Snowslide
+        SAFRAN data is available at : "https://www.aeris-data.fr/en/landing-page/?uuid=865730e8-edeb-4c6b-ae58-80f95166509b#v2020.2"
+
+        Parameters
+        ----------
+        ds_path: str
+            Path to the xarray file downloaded through aeris-data web page
+        massif_id: int
+            Id of the mountain range we want to use the data from
+
+        outputs
+        -------
+        ds_snowf: xarray dataarray
+            Dataarray containing the Snowfall values in kg/m2 for each month and each altitude band of 300m over a hydrological year.
+        """    
+        # Charges xarray dataset
+        ds = xr.load_dataset(ds_path)
+        if 'massif' in ds.coords : 
+            ds = ds.sel(massif=massif_id)
+            ds = ds.drop(["massif"])
+
+        # Removing bad variables
+        if 'isoZeroAltitude' in ds :
+            ds = ds.drop_vars(['isoZeroAltitude'])
+        if 'rainSnowLimit' in ds :
+            ds = ds.drop_vars(['rainSnowLimit'])
+
+        # using altitude as coordinate
+        ds = ds.set_coords("ZS")
+
+        # Constructing the altitude intervals (bin vector)
+        n1 = int(np.min(ds.ZS))
+        n2 = int(np.max(ds.ZS))
+        altitude_bin = np.arange(n1,n2+1,300)
+
+        # Realizing binning operation by averaging values by altitude bands over the whole 'massif' (mountain range)
+        ds = ds.groupby_bins('ZS',altitude_bin).mean("Number_of_points")
+
+        # Summing Snowfall rates to obtain monthly values
+        if frequency=="monthly" : # Propose other frequencies in the future 
+            ds_month =  ds.resample(time='M').sum(dim='time')
+            dates = pd.DatetimeIndex(ds_month.time)
+            jours_par_mois = np.array(dates.days_in_month)
+
+            ds_snowf = ds_month.Snowf*jours_par_mois.reshape(-1, 1)*24
+
+        # We make sure we don't have repetition with dates 
+        ds_snowf = ds_snowf.sel(time=slice(f"{ds.attrs['time_coverage_start'][:4]}-08-01",f"{round(float(ds.attrs['time_coverage_start'][:4]))+1}-07-31"))
+        ds_snowf = ds_snowf.assign_coords({'ZS_bins': np.arange(1,ds.ZS_bins.shape[0]+1)})
+
+        return ds_snowf
+    
+    ds_list = []
+    for i in range(len(ds_paths)) : 
+        ds_snowf = preprocess_SAFRAN_precipitations(ds_paths[i],massif_id=massif_id)
+        ds_list.append(ds_snowf)
+    ds = xr.concat([elt for elt in ds_list], dim='time',coords = "different")
+
+    # (2) - Creating matrices to initialize Snowslide
+    
+    # Importing DEM data 
+    src = rasterio.open(dem_path)
+    dem = src.read(1)
+
+    # Initializing precipitation matrices
+    precipitations = np.zeros((ds.time.shape[0],np.shape(dem)[0],np.shape(dem)[1]))
+
+    nb_months = ds.time.shape[0]
+    nb_bins = ds.ZS_bins.shape[0]
+    for t in range(nb_months):
+        for h in range(nb_bins):
+            precipitations[t][np.where((dem >= h*300) & (dem < (h+1)*300))] = float(ds.sel(ZS_bins=h+1).isel(time=t).values)
+    
+    # Getting SND in m instead of kg/m2
+    precipitations = precipitations / snow_density
+
+    return precipitations 
