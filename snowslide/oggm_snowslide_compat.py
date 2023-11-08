@@ -115,3 +115,67 @@ def compile_snowslide_statistics(gdirs, filesuffix='', path=True):
             out.to_csv(path)
 
     return out
+
+############# ############# ############# ############# ############# ############# 
+# Specific needs 
+
+@utils.entity_task(log)
+def glacier_statistics(gdir):
+    """ Gather statistics about the Snowslide snow redistribution
+    """
+    resolution = abs(gdir.grid.dx)
+    
+    d = dict()
+    d['rgi_id'] = gdir.rgi_id
+    d['Average_height_m'] = np.NaN
+    d['deposit_areas_km2'] = np.NaN
+    d['deposit_volume_km3'] = np.NaN
+
+    try:
+        with xr.open_dataset(gdir.get_filepath('gridded_data')) as ds:
+            map_result = ds['snowslide_1m'].where(ds['glacier_mask'], np.NaN).load()
+            bins = np.arange(1000,4850,50)
+            
+            d['bins'] = bins
+            d['Average_height_m'] = map_result.groupby_bins(ds.topo.where(ds.glacier_mask==1),bins=bins).mean()
+            d['deposit_areas_km2'] = map_result.groupby_bins(ds.topo.where(ds.glacier_mask==1),bins=bins).count() * resolution**2 * 1e-6
+            d['deposit_areas_km2'] = map_result.groupby_bins(ds.topo.where(ds.glacier_mask==1),bins=bins).sum() * resolution**2 * 1e-9
+
+    except (FileNotFoundError, AttributeError, KeyError):
+        pass
+
+    return d
+
+@utils.global_task(log)
+def compile_glacier_statistics(gdirs, filesuffix='', path=True):
+    """Gather as much statistics as possible about a list of glaciers.
+
+    It can be used to do result diagnostics and other stuffs.
+
+    Parameters
+    ----------
+    gdirs : list of :py:class:`oggm.GlacierDirectory` objects
+        the glacier directories to process
+    filesuffix : str
+        add suffix to output file
+    path : str, bool
+        Set to "True" in order  to store the info in the working directory
+        Set to a path to store the file to your chosen location
+    """
+    from oggm.workflow import execute_entity_task
+
+    out_df = execute_entity_task(glacier_statistics, gdirs)
+
+    bins = np.arange(1000,4850,50) 
+    out = pd.DataFrame(out_df,columns=bins).set_index('rgi_id')
+
+    if path:
+        if path is True:
+            out.to_csv(os.path.join(cfg.PATHS['working_dir'],
+                                    ('areas_statistics' +
+                                     filesuffix + '.csv')))
+        else:
+            out.to_csv(path)
+
+    return out
+
