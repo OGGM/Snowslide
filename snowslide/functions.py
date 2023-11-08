@@ -15,7 +15,7 @@ import pandas as pd
 # Main functions used in the heart of snowslide simulations
 
 def dem_flow(HNSO,grid,routing,preprocessing) :
-    """ This function can preprocess the dem (or not) and compute the flow direction based on the 
+    """ This function can preprocess the dem (or not) and compute the flow direction based on the
     total elevation surface (dem + snow depth)
 
     Parameters
@@ -28,14 +28,14 @@ def dem_flow(HNSO,grid,routing,preprocessing) :
         the routing method used in pysheds ('d8' or 'mfd')
     preprocessing: bolean
         activate or deactivate preprocessing
-    
-    Returns 
+
+    Returns
     ----------
     the flow direction matrix (numpy matrix but diferent between d8 and mfd)
     """
-    
+
         ### DEM preprocessing: activated or not ###
-    if preprocessing == True : 
+    if preprocessing == True :
         # Fill pits
         pit_filled_dem = grid.fill_pits(HNSO)
         # Fill depressions
@@ -45,15 +45,15 @@ def dem_flow(HNSO,grid,routing,preprocessing) :
 
         ### Compute flow direction ###
         flow_dir = grid.flowdir(inflated_dem,routing=routing)
-    else : 
+    else :
         flow_dir = grid.flowdir(HNSO,routing=routing)
 
-    return flow_dir 
+    return flow_dir
 
 def precipitations_base(path_dem,quantity,isotherme,x,y) :
     """This function initialize an ideal SND matrix based on solid precipitation information
 
-    Parameters 
+    Parameters
     ----------
     path_dem: str
         path to the .tif file containing the dem
@@ -73,15 +73,15 @@ def precipitations_base(path_dem,quantity,isotherme,x,y) :
 
     # Opening of the dem with pysheds ###
     grid = Grid.from_raster(path_dem)
-    dem = grid.read_raster(path_dem) 
-    
+    dem = grid.read_raster(path_dem)
+
     # Initializing SND with uniform solid precipitations ###
-    if x == None : 
+    if x == None :
         SND = np.full(np.shape(dem),float(quantity))
-    else : 
+    else :
         SND = np.full(np.shape(dem),0)
         SND[y[0]:y[1],x[0]:x[1]]=float(quantity)
-    
+
     # Modifying SND based on the 'isotherme' chosen
     SND[np.where(dem<isotherme)[0],np.where(dem<isotherme)[1]]=0
 
@@ -98,7 +98,7 @@ def slope(dem,resolution_x,resolution_y) :
         longitude resolution of each pixel (in meters)
     resolution_y: float
         latitude resolution of each pixel (in meters)
-    
+
     Returns
     -------
     The matrix of the slope (np matrix)
@@ -118,14 +118,14 @@ def slope(dem,resolution_x,resolution_y) :
     q[1:-1,1:-1] = ((dem[:-2,2:] + 2*dem[:-2,1:-1] + dem[:-2,:-2]) - (dem[2:,2:] + 2*dem[2:,1:-1] + dem[2:,:-2]))/(8*resolution_y)
 
     # Ajouter le keyword (false par défault du bord)
-    
+
         # Compute gradient components (edges)
     n_x,n_y = n_x-1,n_y-1
     p[1:-1,0] = ((dem[:-2,1] + 2*dem[1:-1,1] + dem[2:,1]) - (dem[:-2,0] + 2*dem[1:-1,0] + dem[2:,0]))/(4*resolution_x)
     p[1:-1,n_x] = ((dem[:-2,n_x] + 2*dem[1:-1,n_x] + dem[2:,n_x]) - (dem[:-2,n_x-1] + 2*dem[1:-1,n_x-1] + dem[2:,n_x-1]))/(4*resolution_x)
     p[0,1:-1] = (dem[0,2:]- dem[0,:-2])/(2*resolution_x)
     p[n_y,1:-1] = (dem[n_y,2:]- dem[n_y,:-2])/(2*resolution_x)
-    
+
     q[0,1:-1] = ((dem[1,:-2] + 2*dem[1,1:-1] + dem[1,2:]) - (dem[0,:-2] + 2*dem[0,1:-1] + dem[0,2:]))/(4*resolution_y)
     q[n_y,1:-1] = ((dem[n_y,:-2] + 2*dem[n_y,1:-1] + dem[n_y,2:]) - (dem[n_y-1,:-2] + 2*dem[n_y-1,1:-1] + dem[n_y-1,2:]))/(4*resolution_y)
     q[1:-1,0] = (dem[2:,0]-dem[:-2,0])/(2*resolution_y)
@@ -151,37 +151,37 @@ def slope(dem,resolution_x,resolution_y) :
     return slope
 
 def SND_max_exponential(slope,a,c,min) : # Conseil min = 0.05
-    """ Function that compute the maximal height of snow each pixel can store based on the slope. 
+    """ Function that compute the maximal height of snow each pixel can store based on the slope.
     The function is an exponential and parameters are estimated from 'Bernhardt & Schulz 2007'.
 
     Parameters
     ----------
     slope: np matrix
-        Matrix that attributes a slope value to each pixel 
+        Matrix that attributes a slope value to each pixel
     a: float
-        Parameter of the exponential function. Default is -0.14. 
+        Parameter of the exponential function. Default is -0.14.
     c: float
         Parameter of the exponential function. Default is 145
-    min: float 
+    min: float
         Minimum snow height each pixel can store regardless of the slope. Default is 0.05.
-    
+
     Returns
     -------
     A matrix associating to each pixel the maximum heiht of snow it can store without routing (np matrix in meters)
     """
-    
+
     SND_max = c*np.exp(-a*slope)
 
-    if min!=0.05 : 
+    if min!=0.05 :
         SND_max[np.where(SND_max<min)[0],np.where(SND_max<min)[1]]=min
-    else : 
+    else :
         SND_max[np.where(SND_max<0.05)[0],np.where(SND_max<0.05)[1]]=0.05 # Default is 0.05
-        
+
     return SND_max
 
 def snow_routing(SND, SND_max,flow_dir,routing) :
-    """ That function routes the snow based on the routing method chosen ('mfd' or 'd8'). 
-    It is called at each iteration. 
+    """ That function routes the snow based on the routing method chosen ('mfd' or 'd8').
+    It is called at each iteration.
 
     Parameters
     ----------
@@ -196,13 +196,16 @@ def snow_routing(SND, SND_max,flow_dir,routing) :
     """
     # Bibliothèques
     import numpy as np
-    
+
     # Compute the quantity and fraction of snow that should be routed
     SNR = SND - SND_max # SNR is the quantity of snow that can be routed for each pixel
-    SNR[np.where(SNR<0)[0],np.where(SNR<0)[1]]=0 # Negative values are computed when no amount of snow can be routed
-    # Then every negative value is set to 0, if threshold is not reached, the snow isn't routed.  
-    
-    if routing=='mfd' : 
+
+    # Negative values are computed when no amount of snow can be routed
+    SNR[SNR<0]=0
+
+    # Then every negative value is set to 0, if threshold is not reached, the snow isn't routed.
+
+    if routing=='mfd' :
         direction_indices = {'North' : 0,'Northeast':1,'East':2,'Southeast':3,'South':4,'Southwest':5,'West':6,'Northwest':7}
         # Neighbour to the North
         SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir[0][2:,1:-1]*SNR[2:,1:-1] - flow_dir[0][1:-1,1:-1]*SNR[1:-1,1:-1]
@@ -220,23 +223,18 @@ def snow_routing(SND, SND_max,flow_dir,routing) :
         SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir[6][1:-1,2:]*SNR[1:-1,2:] - flow_dir[6][1:-1,1:-1]*SNR[1:-1,1:-1]
         # Neighbour to the NorthWest
         SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir[7][2:,2:]*SNR[2:,2:] - flow_dir[7][1:-1,1:-1]*SNR[1:-1,1:-1]
-    
+
     if routing=='d8' :
         direction_indices = {'east': 1, 'northeast': 128, 'north': 64,'northwest': 32, 'west': 16, 'southwest': 8,'south': 4, 'southeast':2}
+
         # Neighbour to the East
-        flow_dir_E = np.copy(flow_dir)
-        flow_dir_E[np.where(flow_dir!=1)[0],np.where(flow_dir!=1)[1]]=0
-        flow_dir_E[np.where(flow_dir==1)[0],np.where(flow_dir==1)[1]]=1
-        SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir_E[1:-1,:-2]*SNR[1:-1,:-2] - flow_dir_E[1:-1,1:-1]*SNR[1:-1,1:-1] 
+        flow_dir_E = flow_dir==1
+        SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir_E[1:-1,:-2]*SNR[1:-1,:-2] - flow_dir_E[1:-1,1:-1]*SNR[1:-1,1:-1]
         # Neighbour to the NorthEast
-        flow_dir_NE = np.copy(flow_dir)
-        flow_dir_NE[np.where(flow_dir!=128)[0],np.where(flow_dir!=128)[1]]=0
-        flow_dir_NE[np.where(flow_dir==128)[0],np.where(flow_dir==128)[1]]=1
+        flow_dir_NE = flow_dir==128
         SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir_NE[2:,:-2]*SNR[2:,:-2] - flow_dir_NE[1:-1,1:-1]*SNR[1:-1,1:-1]
         # Neighbour to the North
-        flow_dir_N = np.copy(flow_dir)
-        flow_dir_N[np.where(flow_dir!=64)[0],np.where(flow_dir!=64)[1]]=0
-        flow_dir_N[np.where(flow_dir==64)[0],np.where(flow_dir==64)[1]]=1
+        flow_dir_N = flow_dir==64
         SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir_N[2:,1:-1]*SNR[2:,1:-1] - flow_dir_N[1:-1,1:-1]*SNR[1:-1,1:-1]
         # Neighbour to the NorthWest
         flow_dir_NO = np.copy(flow_dir)
@@ -264,20 +262,20 @@ def snow_routing(SND, SND_max,flow_dir,routing) :
         flow_dir_SE[np.where(flow_dir==2)[0],np.where(flow_dir==2)[1]]=1
         SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir_SE[:-2,:-2]*SNR[:-2,:-2] - flow_dir_SE[1:-1,1:-1]*SNR[1:-1,1:-1]
 
-    return SND 
+    return SND
 
 def precipitations(gdir,dem,date,density):
-    """ This function initialize the SND matrix based with solid preciptation based on climate data. It is designed to 
-    work properly with the glaciological model OGGM. 
-    
+    """ This function initialize the SND matrix based with solid preciptation based on climate data. It is designed to
+    work properly with the glaciological model OGGM.
+
     Parameters
     ----------
-    gdir: OGGM module 
+    gdir: OGGM module
         specific to OGGM
     dem: np matrix
         Topography information previously opened with pysheds.
-    date: str 
-        Information about the month the user wants to model : format is 'DD-MM-YYYY'. 
+    date: str
+        Information about the month the user wants to model : format is 'DD-MM-YYYY'.
     density: float
         density of the snow. Default is 400 kg/m3.
 
@@ -286,20 +284,20 @@ def precipitations(gdir,dem,date,density):
     A initialization of the SND matrix with snow heights.
     """
 
-    climate_data_path = gdir.get_filepath('climate_historical') # FOR OGGM : 
+    climate_data_path = gdir.get_filepath('climate_historical') # FOR OGGM :
     #climate_data_path = "/Users/llemcf/Desktop/Stage_IGE_2023/Snowslide x OGGM/climate_historical.nc"
     with xr.open_dataset(climate_data_path) as ds_clim:
         ds_clim = ds_clim.load()
-    
+
     # Get climate data
     temp = float(ds_clim.temp.sel(time=date))
     prcp = float(ds_clim.prcp.sel(time=date))
     ref_hgt = float(ds_clim.attrs['ref_hgt'])
 
-    # Compute temperature field based on linear variation with altitude hypothesis 
+    # Compute temperature field based on linear variation with altitude hypothesis
     temp_grad = 6.5e-3 # K.m-1
     temperatures = temp - temp_grad*(dem - ref_hgt)
-    
+
     # Compute solid precipitation field based on linear variation with altitude hypothesis (between 0°C and 2°C)
     precipitations = np.full(np.shape(dem),prcp)
     precipitations[np.where(temperatures >= 2)] = 0
@@ -312,8 +310,8 @@ def precipitations(gdir,dem,date,density):
 
 def reframe_tif(input_path,output_path=None,useas_app=False,extent=[[None,None],[None,None]],plotting=True):
     """ To quickly crop a DEM, retaining only the area of interest.
-    It displays the initial DEM, and the user can then enter the x and y windows of the zone to be retained 
-    so that the function can store a new DEM entitled: 'reframed_dem'. 
+    It displays the initial DEM, and the user can then enter the x and y windows of the zone to be retained
+    so that the function can store a new DEM entitled: 'reframed_dem'.
 
     Parameters
     ----------
@@ -322,21 +320,21 @@ def reframe_tif(input_path,output_path=None,useas_app=False,extent=[[None,None],
     output_path: str
         Path where the DEM need to be stored (complete path with the file name and format). Default is working directory.
     useas_app: Bolean
-        If True, the program interacts with the user which directly enters the data it needs to perform the reframing. 
+        If True, the program interacts with the user which directly enters the data it needs to perform the reframing.
         If False, the user will need to enter the data in the function arguments.
     extent: list [[xmin,xmax],[ymin,ymax]]
         Values in pixel indices of the extent of the new DEM. Values can be chosen using the first plot displayed by the function.
     plotting: Bolean
-        If True the function displays the new cropped DEM for verification. 
-    
+        If True the function displays the new cropped DEM for verification.
+
     Returns
     -------
-    Displays the original DEM and performs the cropping, store the new data and displays it if chosen by the user. 
+    Displays the original DEM and performs the cropping, store the new data and displays it if chosen by the user.
     """
 
     with rasterio.open(input_path) as src:
         dem_init=src.read(1)
-    
+
         if useas_app==True:
             plt.figure()
             plt.imshow(dem_init)
@@ -362,19 +360,19 @@ def reframe_tif(input_path,output_path=None,useas_app=False,extent=[[None,None],
             'height': height,
             'transform': src.window_transform(window)
         })
-    
+
     if output_path==None:
         folder_path = os.getcwd()
-        output_path = folder_path + '/reframed_dem.tif' 
+        output_path = folder_path + '/reframed_dem.tif'
 
     with rasterio.open(output_path, 'w', **meta) as dst:
         dst.write(data)
-    
+
     if plotting == True:
         plot = input('Press y if the reframed dem needs to be plotted')
 
     if plot=='y' :
-         
+
         dem_reframed = rasterio.open(output_path)
         dem_reframed = dem_reframed.read(1).astype('float64')
 
@@ -403,9 +401,9 @@ def resampling_dem(src_path,dst_path,factor) :
 
     Returns
     -------
-    A new dem with a chosen new resolution.  
+    A new dem with a chosen new resolution.
     """
-    
+
     with rasterio.open(src_path) as dataset:
 
         # resample data to target shape
@@ -447,19 +445,19 @@ def initialize_snowslide_from_SAFRAN(dem_path,ds_paths,massif_id=3,frequency="M"
         List of the paths to anual xarray files downloaded through aeris-data web page
     massif_id: int
         Id of the mountain range we want to use the data from
-    frequency: str 
+    frequency: str
         Specifies the frequency over which snowslide is used.
         'D' : Day
         'W' : Week
         'M' : Month
         'Q' : quarter
         'A' : Year
-    You can also specify a diferent frequency with for example '2M' that means '2 months'. 
-    
+    You can also specify a diferent frequency with for example '2M' that means '2 months'.
+
     Outputs
     -------
     It stores in a specified folder a numpy matrix containing an SND initialization on a monthly frequency
-    
+
     Improvements to be made :
     ------------------------
         - user should have the possibility to choose daily, weekly, monthly or annual frequence ...
@@ -486,10 +484,10 @@ def initialize_snowslide_from_SAFRAN(dem_path,ds_paths,massif_id=3,frequency="M"
         -------
         ds_snowf: xarray dataarray
             Dataarray containing the Snowfall values in kg/m2 for each month and each altitude band of 300m over a hydrological year.
-        """    
+        """
         # Charges xarray dataset
         ds = xr.load_dataset(ds_path)
-        if 'massif' in ds.coords : 
+        if 'massif' in ds.coords :
             ds = ds.sel(massif=massif_id)
             ds = ds.drop(["massif"])
 
@@ -513,10 +511,10 @@ def initialize_snowslide_from_SAFRAN(dem_path,ds_paths,massif_id=3,frequency="M"
         # Summing Snowfall rates to obtain values at some chosen frequency
         ds_resampled = ds.resample(time=frequency).sum(dim='time')
         dates = pd.DatetimeIndex(ds_resampled.time)
-        if 'A' in frequency : # Yearly frequency 
+        if 'A' in frequency : # Yearly frequency
             # jours_par_an = np.array(dates.days_in_year)
             ds_snowf = ds_resampled.Snowf*365*24 # Méthod 'En attendant mieux' car 365 ne prend pas en compte les années bisextiles mais on commet une très faible erreur !!
-        if 'M' in frequency : # Monthly frequency 
+        if 'M' in frequency : # Monthly frequency
             jours_par_mois = np.array(dates.days_in_month)
             ds_snowf = ds_resampled.Snowf*jours_par_mois.reshape(-1, 1)*24
         if 'W' in frequency: # Weekly frequency
@@ -524,21 +522,21 @@ def initialize_snowslide_from_SAFRAN(dem_path,ds_paths,massif_id=3,frequency="M"
         if 'D' in frequency: # Daily frequency
             ds_snowf = ds_resampled.Snowf*24
 
-        # We make sure we don't have repetition with dates 
+        # We make sure we don't have repetition with dates
         ds_snowf = ds_snowf.sel(time=slice(f"{ds.attrs['time_coverage_start'][:4]}-08-01",f"{round(float(ds.attrs['time_coverage_start'][:4]))+1}-07-31"))
         ds_snowf = ds_snowf.assign_coords({'ZS_bins': np.arange(1,ds.ZS_bins.shape[0]+1)})
 
         return ds_snowf
-    
+
     ds_list = []
-    for i in range(len(ds_paths)) : 
+    for i in range(len(ds_paths)) :
         ds_snowf = preprocess_SAFRAN_precipitations(ds_paths[i],massif_id=massif_id)
         ds_list.append(ds_snowf)
     ds = xr.concat([elt for elt in ds_list], dim='time',coords = "different")
 
     # (2) - Creating matrices to initialize Snowslide
-    
-    # Importing DEM data 
+
+    # Importing DEM data
     src = rasterio.open(dem_path)
     dem = src.read(1)
 
@@ -550,7 +548,7 @@ def initialize_snowslide_from_SAFRAN(dem_path,ds_paths,massif_id=3,frequency="M"
     for t in range(nb_months):
         for h in range(nb_bins):
             precipitations[t][np.where((dem >= h*300) & (dem < (h+1)*300))] = float(ds.sel(ZS_bins=h+1).isel(time=t).values)
-    
+
     # Getting SND in m instead of kg/m2
     precipitations = precipitations / snow_density
 
