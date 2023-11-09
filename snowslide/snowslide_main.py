@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 
 #from snowslide.display_3Dresults import * Don't need it for now
 
-def snowslide_complete(path_dem,SND0,epsilon=0.001,
+def snowslide_complete(path_dem,snd0,epsilon=0.001,
                        param_simul={"simul_name":'glacier',"save_path":None,"save_fig":False,"save_array":True,"plot":'2D'},
                        param_expo={"a":0.14,"c":145,"min":0.05},
                        param_routing={"routing":'mfd',"preprocessing":True},
@@ -22,7 +22,7 @@ def snowslide_complete(path_dem,SND0,epsilon=0.001,
     ----------
     path_dem: str
         Path to the dem file (.tif)
-    SND0: numpy.ndarray
+    snd0: numpy.ndarray
         Numpy matrix of the same size as the dem containing the initial snow depths (derived from precipitation).
     epsilon: float
         Condition to get out the loop (convergence is considered reached when indicateur < epsilon). Default is 0.001.
@@ -100,9 +100,9 @@ def snowslide_complete(path_dem,SND0,epsilon=0.001,
     dem = grid.read_raster(path_dem)
 
         # initialization of snow quantities 
-    SND_tot = []
-    SND = np.copy(SND0)
-    SND_tot.append(np.copy(SND))
+    snd_tot = []
+    snd = np.copy(snd0)
+    snd_tot.append(np.copy(snd))
 
 
     print('Variables have been initialized')
@@ -133,20 +133,20 @@ def snowslide_complete(path_dem,SND0,epsilon=0.001,
     convergence=[]
     iter = 0
     while indicateur > epsilon :    
-        SND1=SND.copy()
-        HNSO = dem + SND
-        flow_dir = dem_flow(HNSO,grid,param_routing["routing"],param_routing["preprocessing"])
-        HNSO_slope = slope(HNSO,resolution,resolution)
-        SND_max = SND_max_exponential(HNSO_slope,param_expo["a"],param_expo["c"],param_expo["min"])
-        SND = snow_routing(SND,SND_max,flow_dir,param_routing["routing"])
+        snd1=snd.copy()
+        hnso = dem + snd
+        flow_dir = dem_flow(hnso,grid,param_routing["routing"],param_routing["preprocessing"])
+        hnso_slope = slope(hnso,resolution,resolution)
+        snd_max = snd_max_exponential(hnso_slope,param_expo["a"],param_expo["c"],param_expo["min"])
+        snd = snow_routing(snd,snd_max,flow_dir,param_routing["routing"])
         
                     ### Exit conditions ###
 
         # 1st exit condition 
-        indicateur = np.sum((SND-SND1)**2) # Exit condition when the L2 norm of the distance 
+        indicateur = np.sum((snd-snd1)**2) # Exit condition when the L2 norm of the distance 
         # between the matrices of two iterations converge towards 0. 
         convergence.append(indicateur)
-        SND_tot.append(np.copy(SND))
+        snd_tot.append(np.copy(snd))
     
         # 2nd exit condition if indicateur converge towards a constant that is not 0. 
         if iter > 5 : 
@@ -164,12 +164,12 @@ def snowslide_complete(path_dem,SND0,epsilon=0.001,
                 ylabel = 'latitude'
                 figure_name = f'/figure{param_simul["plot"]}_SND_iter{iter}.png' 
                 save_path = plots_path + figure_name  
-                save_plots2D(SND_tot[iter],save_path=save_path,legend=legend,title=title,xlabel=xlabel,ylabel=ylabel,fix_colorbar=fix_colorbar)
+                save_plots2D(snd_tot[iter],save_path=save_path,legend=legend,title=title,xlabel=xlabel,ylabel=ylabel,fix_colorbar=fix_colorbar)
         
             if param_simul["plot"]=='3d' :
                 figure_name = f'/figure{param_simul["plot"]}_SND_iter{iter}.png'
                 save_path = plots_path + figure_name
-                save_plots3D(path_dem,SND_plot=SND_tot[iter],save_path=save_path,param_camera=param_camera)
+                save_plots3D(path_dem,SND_plot=snd_tot[iter],save_path=save_path,param_camera=param_camera)
 
         # Makes iterations evolve
         iter = iter + 1
@@ -180,29 +180,29 @@ def snowslide_complete(path_dem,SND0,epsilon=0.001,
     if param_simul["save_fig"] == True :
         gif_name = f"Snowslide_{param_simul['simul_name']}_animation.gif"
         fig_names = f"figure{param_simul['plot']}_SND_iter"
-        n = np.shape(SND_tot)[0] - 1
+        n = np.shape(snd_tot)[0] - 1
         create_giff(plots_path,dst_path=simul_folder,gif_name=gif_name,fig_names=fig_names,n=n-1)
     
     # Save the matrices iterations in a numpy file
     if param_simul["save_array"] == True : 
-        data = np.copy(SND_tot)
+        data = np.copy(snd_tot)
         array_name = "/SND_at_all_iterations"
         np.save(simul_folder + array_name, data)    
 
     # Saving the output SND as .tif file with same projection and properties as the dem
     output_path = simul_folder + '/converged_SND.tif'
-    with rasterio.open(output_path, 'w', driver='GTiff', height=SND.shape[0], width=SND.shape[1],
-                count=1, dtype=SND.dtype, crs=crs, transform=transform) as dst:
-        dst.write(SND, 1)
+    with rasterio.open(output_path, 'w', driver='GTiff', height=snd.shape[0], width=snd.shape[1],
+                count=1, dtype=snd.dtype, crs=crs, transform=transform) as dst:
+        dst.write(snd, 1)
         
     print(f"The files have been stored in the following folder {simul_folder}")
     print("The outputs of snowslide_complete function are : SND, SND_tot, convergence.")
     
-    return SND,SND_tot,convergence
+    return snd,snd_tot,convergence
 
-def snowslide_base(path_dem, SND0, save_path=None, epsilon=1e-3,
+def snowslide_base(path_dem, snd0, save_path=None, epsilon=1e-3,
                    param_expo={"a":0.14, "c":145, "min":0.05},
-                   param_routing={"routing":'mfd', "preprocessing":True},
+                   param_routing={"routing":'mfd', "preprocessing":True,"compute_edges":True},
                    glacier_id=''):   
     """ This function operates the gravitationnal transport of the snow from an initial map of snow heights and a dem.
     Snowslide_base is the fastest computing snowslide algorithm with very basic display functionalities allowed for the user.
@@ -211,17 +211,17 @@ def snowslide_base(path_dem, SND0, save_path=None, epsilon=1e-3,
     ----------
     path_dem: str
         Path to the dem file (.tif)
-    SND0: numpy.ndarray
+    snd0: numpy.ndarray
         Numpy matrix of the same size as the dem containing the initial snow depths (derived from precipitation). 
     save_path: str
-        Path where the user want to save the data produced (.tif file of the SND matrix). Default is None.
+        Path where the user want to save the data produced (.tif file of the snd matrix). Default is None.
         If no path is indicated, no data is stored (only registered as a variable when running the function)
         If a path is indicated the matrix will be saved as 'converged_SND.tif' file
     epsilon: float
         Condition to get out the loop (convergence is considered reached when indicateur < epsilon). Default is 1e-3.
     param_expo: dictionary
         The maximum snow height each pixel can store is computed as an exponential function of the slope. Parameters are the following:
-            SND_max=c*exp(a*slope)
+            snd_max=c*exp(a*slope)
         a: float
             Default is -0.14. 
         c: float
@@ -234,6 +234,8 @@ def snowslide_base(path_dem, SND0, save_path=None, epsilon=1e-3,
             routing method ('mfd' or 'd8')
         preprocessing: bolean
             activate or deactivate preprocessing of the DEM. Deactivate it affects convergence.
+        compute_edges: bolean
+            activate or deactivate computing of edges for the slope function
     glacier_id : str, optional
         for logging only: add the name of the glacier to the log messages
 
@@ -257,7 +259,7 @@ def snowslide_base(path_dem, SND0, save_path=None, epsilon=1e-3,
     dem = grid.read_raster(path_dem)
 
         # initialization of initial snow depths
-    SND = np.copy(SND0)
+    snd = np.copy(snd0)
 
     log.debug(f'{glacier_id}variables have been initialized, launching the simulation...')
 
@@ -266,19 +268,19 @@ def snowslide_base(path_dem, SND0, save_path=None, epsilon=1e-3,
     convergence=[]
     iter = 0
     while indicateur > epsilon :    
-        SND1=np.copy(SND) 
-        HNSO = dem + SND # total elevation surface (HNSO) is recalculated at each iteration
-        flow_dir = dem_flow(HNSO,grid,param_routing["routing"],param_routing["preprocessing"])
-        HNSO_slope = slope(HNSO,resolution,resolution)
-        SND_max = SND_max_exponential(HNSO_slope,param_expo["a"],param_expo["c"],param_expo["min"])
-        SND = snow_routing(SND,SND_max,flow_dir,param_routing["routing"]) 
+        snd1=np.copy(snd) 
+        hnso = dem + snd # total elevation surface (HNSO) is recalculated at each iteration
+        flow_dir = dem_flow(hnso,grid,param_routing["routing"],param_routing["preprocessing"])
+        hnso_slope = slope(hnso,resolution,resolution,param_routing["compute_edges"])
+        snd_max = snd_max_exponential(hnso_slope,param_expo["a"],param_expo["c"],param_expo["min"])
+        snd = snow_routing(snd,snd_max,flow_dir,param_routing["routing"]) 
         
         iter = iter + 1
 
                     ### Exit conditions ###
 
         # 1st exit condition 
-        indicateur = np.sum((SND-SND1)**2) # Exit condition when the L2 norm of the distance 
+        indicateur = np.sum((snd-snd1)**2) # Exit condition when the L2 norm of the distance 
         # between the matrices of two iterations converge towards 0. 
         convergence.append(indicateur)
     
@@ -293,10 +295,10 @@ def snowslide_base(path_dem, SND0, save_path=None, epsilon=1e-3,
     # Saving the output as .tif file with same projection and properties as the dem
     if save_path!=None :
         output_path = save_path + '/converged_SND.tif'
-        with rasterio.open(output_path, 'w', driver='GTiff', height=SND.shape[0], width=SND.shape[1],
-                   count=1, dtype=SND.dtype, crs=crs, transform=transform) as dst:
-            dst.write(SND, 1)
+        with rasterio.open(output_path, 'w', driver='GTiff', height=snd.shape[0], width=snd.shape[1],
+                   count=1, dtype=snd.dtype, crs=crs, transform=transform) as dst:
+            dst.write(snd, 1)
         
         log.debug(f"{glacier_id}the file has been stored in the following location: {output_path}")
 
-    return SND
+    return snd

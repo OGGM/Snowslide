@@ -14,30 +14,30 @@ import pandas as pd
 
 # Main functions used in the heart of snowslide simulations
 
-def dem_flow(HNSO,grid,routing,preprocessing) :
-    """ This function can preprocess the dem (or not) and compute the flow direction based on the 
+def dem_flow(hnso,grid,routing,preprocessing) :
+    """ This function can preprocess the dem (or not) and compute the flow direction based on the
     total elevation surface (dem + snow depth)
 
     Parameters
     ----------
     HNSO: numpy matrix
-        the total elevation surface matrix (dem + SND)
+        the total elevation surface matrix (dem + dem)
     grid: ####
         the pysheds module to compute flow directions
     routing: str
         the routing method used in pysheds ('d8' or 'mfd')
     preprocessing: bolean
         activate or deactivate preprocessing
-    
+
     Returns 
     ----------
     the flow direction matrix (numpy matrix but diferent between d8 and mfd)
     """
     
         ### DEM preprocessing: activated or not ###
-    if preprocessing == True : 
+    if preprocessing == True :
         # Fill pits
-        pit_filled_dem = grid.fill_pits(HNSO)
+        pit_filled_dem = grid.fill_pits(hnso)
         # Fill depressions
         flooded_dem = grid.fill_depressions(pit_filled_dem)
         # Resolve flats
@@ -45,8 +45,8 @@ def dem_flow(HNSO,grid,routing,preprocessing) :
 
         ### Compute flow direction ###
         flow_dir = grid.flowdir(inflated_dem,routing=routing)
-    else : 
-        flow_dir = grid.flowdir(HNSO,routing=routing)
+    else :
+        flow_dir = grid.flowdir(hnso,routing=routing)
 
     return flow_dir 
 
@@ -68,36 +68,39 @@ def precipitations_base(path_dem,quantity,isotherme,x,y) :
 
     Returns
     -------
-    The initialization of the snow depth matrix (np matrix)
+    The initialization of the snow depth matrix (np matrix : snd)
     """
 
     # Opening of the dem with pysheds ###
     grid = Grid.from_raster(path_dem)
-    dem = grid.read_raster(path_dem) 
+    dem = grid.read_raster(path_dem)
     
     # Initializing SND with uniform solid precipitations ###
-    if x == None : 
-        SND = np.full(np.shape(dem),float(quantity))
-    else : 
-        SND = np.full(np.shape(dem),0)
-        SND[y[0]:y[1],x[0]:x[1]]=float(quantity)
+    if x == None :
+        snd = np.full(np.shape(dem),float(quantity))
+    else :
+        snd = np.full(np.shape(dem),0)
+        snd[y[0]:y[1],x[0]:x[1]]=float(quantity)
     
     # Modifying SND based on the 'isotherme' chosen
-    SND[np.where(dem<isotherme)[0],np.where(dem<isotherme)[1]]=0
+    snd[dem<isotherme]=0
 
-    return SND
+    return snd
 
-def slope(dem,resolution_x,resolution_y) :
+def slope(dem,map_dx,map_dy,compute_edges=True) :
     """ This function calculate a slope matrix based on the dem matrix
 
     Parameters
     ----------
     dem: np matrix
         topography matrix containing the altitude data
-    resolution_x: float
+    map_dx: float
         longitude resolution of each pixel (in meters)
-    resolution_y: float
+    map_dy: float
         latitude resolution of each pixel (in meters)
+    compute_edges: Bolean
+        True or False depending on the choice of the user the edges of the slope matrix are computed or equalised with the neighbour.
+        Not calculating them can make the calculation faster but also affect the routing of the snow at the edge of the dem.
     
     Returns
     -------
@@ -106,41 +109,44 @@ def slope(dem,resolution_x,resolution_y) :
 
     # Initialization of the matrices in x and y directions
     n = np.shape(dem)
-    n_x = np.shape(dem)[1]
-    n_y = np.shape(dem)[0]
-    p = np.zeros(n)
-    q = np.zeros(n)
+    ny,nx = np.shape(dem)
+    p,q = np.zeros(n),np.zeros(n)
 
     # Remplir plutot que de recréer à chaque pas de temps (soit les donner en entrées à la fonction, soit global parameter)
 
     # Compute gradient components(inside)
-    p[1:-1,1:-1] = ((dem[:-2,2:] + 2*dem[1:-1,2:] + dem[2:,2:]) - (dem[:-2,:-2] + 2*dem[1:-1,:-2] + dem[2:,:-2]))/(8*resolution_x)
-    q[1:-1,1:-1] = ((dem[:-2,2:] + 2*dem[:-2,1:-1] + dem[:-2,:-2]) - (dem[2:,2:] + 2*dem[2:,1:-1] + dem[2:,:-2]))/(8*resolution_y)
+    p[1:-1,1:-1] = ((dem[:-2,2:] + 2*dem[1:-1,2:] + dem[2:,2:]) - (dem[:-2,:-2] + 2*dem[1:-1,:-2] + dem[2:,:-2]))/(8*map_dx)
+    q[1:-1,1:-1] = ((dem[:-2,2:] + 2*dem[:-2,1:-1] + dem[:-2,:-2]) - (dem[2:,2:] + 2*dem[2:,1:-1] + dem[2:,:-2]))/(8*map_dy)
 
-    # Ajouter le keyword (false par défault du bord)
+    nx,ny = nx-1,ny-1
+    if compute_edges == True:
+            # Compute gradient components (edges)
+        p[1:-1,0] = ((dem[:-2,1] + 2*dem[1:-1,1] + dem[2:,1]) - (dem[:-2,0] + 2*dem[1:-1,0] + dem[2:,0]))/(4*map_dx)
+        p[1:-1,nx] = ((dem[:-2,nx] + 2*dem[1:-1,nx] + dem[2:,nx]) - (dem[:-2,nx-1] + 2*dem[1:-1,nx-1] + dem[2:,nx-1]))/(4*map_dx)
+        p[0,1:-1] = (dem[0,2:]- dem[0,:-2])/(2*map_dx)
+        p[ny,1:-1] = (dem[ny,2:]- dem[ny,:-2])/(2*map_dx)
+        
+        q[0,1:-1] = ((dem[1,:-2] + 2*dem[1,1:-1] + dem[1,2:]) - (dem[0,:-2] + 2*dem[0,1:-1] + dem[0,2:]))/(4*map_dy)
+        q[ny,1:-1] = ((dem[ny,:-2] + 2*dem[ny,1:-1] + dem[ny,2:]) - (dem[ny-1,:-2] + 2*dem[ny-1,1:-1] + dem[ny-1,2:]))/(4*map_dy)
+        q[1:-1,0] = (dem[2:,0]-dem[:-2,0])/(2*map_dy)
+        q[1:-1,nx] = (dem[2:,nx]-dem[:-2,nx])/(2*map_dy)
+
+            # Compute gradient components (corners)
+        p[0,0] = (dem[0,1]-dem[0,0])/map_dx
+        q[0,0] = (dem[1,0]-dem[0,0])/map_dy
+        p[0,nx] = (dem[0,nx]-dem[0,nx-1])/map_dx
+        q[0,nx] = (dem[1,nx]-dem[0,nx])/map_dy
+
+        p[ny,0] = (dem[ny,1]-dem[ny,0])/map_dx
+        q[ny,0] = (dem[ny,0]-dem[ny-1,0])/map_dy
+        p[ny,nx] = (dem[ny,nx]-dem[ny,nx-1])/map_dx
+        q[ny,nx] = (dem[ny,nx]-dem[ny-1,nx])/map_dy
     
-        # Compute gradient components (edges)
-    n_x,n_y = n_x-1,n_y-1
-    p[1:-1,0] = ((dem[:-2,1] + 2*dem[1:-1,1] + dem[2:,1]) - (dem[:-2,0] + 2*dem[1:-1,0] + dem[2:,0]))/(4*resolution_x)
-    p[1:-1,n_x] = ((dem[:-2,n_x] + 2*dem[1:-1,n_x] + dem[2:,n_x]) - (dem[:-2,n_x-1] + 2*dem[1:-1,n_x-1] + dem[2:,n_x-1]))/(4*resolution_x)
-    p[0,1:-1] = (dem[0,2:]- dem[0,:-2])/(2*resolution_x)
-    p[n_y,1:-1] = (dem[n_y,2:]- dem[n_y,:-2])/(2*resolution_x)
-    
-    q[0,1:-1] = ((dem[1,:-2] + 2*dem[1,1:-1] + dem[1,2:]) - (dem[0,:-2] + 2*dem[0,1:-1] + dem[0,2:]))/(4*resolution_y)
-    q[n_y,1:-1] = ((dem[n_y,:-2] + 2*dem[n_y,1:-1] + dem[n_y,2:]) - (dem[n_y-1,:-2] + 2*dem[n_y-1,1:-1] + dem[n_y-1,2:]))/(4*resolution_y)
-    q[1:-1,0] = (dem[2:,0]-dem[:-2,0])/(2*resolution_y)
-    q[1:-1,n_x] = (dem[2:,n_x]-dem[:-2,n_x])/(2*resolution_y)
-
-        # Compute gradient components (corners)
-    p[0,0] = (dem[0,1]-dem[0,0])/resolution_x
-    q[0,0] = (dem[1,0]-dem[0,0])/resolution_y
-    p[0,n_x] = (dem[0,n_x]-dem[0,n_x-1])/resolution_x
-    q[0,n_x] = (dem[1,n_x]-dem[0,n_x])/resolution_y
-
-    p[n_y,0] = (dem[n_y,1]-dem[n_y,0])/resolution_x
-    q[n_y,0] = (dem[n_y,0]-dem[n_y-1,0])/resolution_y
-    p[n_y,n_x] = (dem[n_y,n_x]-dem[n_y,n_x-1])/resolution_x
-    p[n_y,n_x] = (dem[n_y,n_x]-dem[n_y-1,n_x])/resolution_y
+    if compute_edges == False:
+        p[:,0],p[:,nx] = p[:,1],p[:,nx-1]
+        q[:,0],q[:,nx] = q[:,1],q[:,nx-1]
+        p[0,:],p[ny,:] = p[1,:],p[ny-1,:]
+        q[0,:],q[ny,:] = q[1,:],q[ny-1,:]
 
     # Compute gradient from components
     gradient  = np.sqrt(p**2+q**2)
@@ -150,7 +156,7 @@ def slope(dem,resolution_x,resolution_y) :
 
     return slope
 
-def SND_max_exponential(slope,a,c,min) : # Conseil min = 0.05
+def snd_max_exponential(slp,a,c,min) :
     """ Function that compute the maximal height of snow each pixel can store based on the slope. 
     The function is an exponential and parameters are estimated from 'Bernhardt & Schulz 2007'.
 
@@ -170,101 +176,79 @@ def SND_max_exponential(slope,a,c,min) : # Conseil min = 0.05
     A matrix associating to each pixel the maximum heiht of snow it can store without routing (np matrix in meters)
     """
     
-    SND_max = c*np.exp(-a*slope)
-
-    if min!=0.05 : 
-        SND_max[np.where(SND_max<min)[0],np.where(SND_max<min)[1]]=min
-    else : 
-        SND_max[np.where(SND_max<0.05)[0],np.where(SND_max<0.05)[1]]=0.05 # Default is 0.05
+    snd_max = c*np.exp(-a*slp)
+    snd_max[snd_max < min] = min
         
-    return SND_max
+    return snd_max
 
-def snow_routing(SND, SND_max,flow_dir,routing) :
-    """ That function routes the snow based on the routing method chosen ('mfd' or 'd8'). 
-    It is called at each iteration. 
+def snow_routing(snd,snd_max,flow_dir,routing) :
+    """ That function routes the snow based on the routing method chosen ('mfd' or 'd8').
+    It is called at each iteration.
 
     Parameters
     ----------
-    SND: np matrix
+    snd: np matrix
         Matrix of the snow heights associated to each pixel at iteration k
-    SND_max: np matrix
+    snd_max: np matrix
         matrix associating to each pixel the maximum heiht of snow it can store based on an exponential function of slope
     flow_dir: np matrix or list of np matrices (depending on the routing method)
         Matrix of the direction and coefficient of snow that is routed to the next pixels
     routing: str
         Routing method chosen by the users ('mfd' or 'd8')
     """
-    # Bibliothèques
-    import numpy as np
-    
+
     # Compute the quantity and fraction of snow that should be routed
-    SNR = SND - SND_max # SNR is the quantity of snow that can be routed for each pixel
-    SNR[np.where(SNR<0)[0],np.where(SNR<0)[1]]=0 # Negative values are computed when no amount of snow can be routed
-    # Then every negative value is set to 0, if threshold is not reached, the snow isn't routed.  
-    
-    if routing=='mfd' : 
+    snr = snd - snd_max # snr is the quantity of snow that can be routed for each pixel
+    snr[snr<0]=0 # Negative values are computed when no amount of snow can be routed
+    # Then every negative value is set to 0, if threshold is not reached, the snow isn't routed.
+
+    if routing=='mfd' :
         direction_indices = {'North' : 0,'Northeast':1,'East':2,'Southeast':3,'South':4,'Southwest':5,'West':6,'Northwest':7}
         # Neighbour to the North
-        SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir[0][2:,1:-1]*SNR[2:,1:-1] - flow_dir[0][1:-1,1:-1]*SNR[1:-1,1:-1]
+        snd[1:-1,1:-1] = snd[1:-1,1:-1] + flow_dir[0][2:,1:-1]*snr[2:,1:-1] - flow_dir[0][1:-1,1:-1]*snr[1:-1,1:-1]
         # Neighbour to the NorthEast
-        SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir[1][2:,:-2]*SNR[2:,:-2] - flow_dir[1][1:-1,1:-1]*SNR[1:-1,1:-1]
+        snd[1:-1,1:-1] = snd[1:-1,1:-1] + flow_dir[1][2:,:-2]*snr[2:,:-2] - flow_dir[1][1:-1,1:-1]*snr[1:-1,1:-1]
         # Neighbour to the East
-        SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir[2][1:-1,:-2]*SNR[1:-1,:-2] - flow_dir[2][1:-1,1:-1]*SNR[1:-1,1:-1]
+        snd[1:-1,1:-1] = snd[1:-1,1:-1] + flow_dir[2][1:-1,:-2]*snr[1:-1,:-2] - flow_dir[2][1:-1,1:-1]*snr[1:-1,1:-1]
         # Neighbour to the SouthEast
-        SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir[3][:-2,:-2]*SNR[:-2,:-2] - flow_dir[3][1:-1,1:-1]*SNR[1:-1,1:-1]
+        snd[1:-1,1:-1] = snd[1:-1,1:-1] + flow_dir[3][:-2,:-2]*snr[:-2,:-2] - flow_dir[3][1:-1,1:-1]*snr[1:-1,1:-1]
         # Neighbour to the South
-        SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir[4][:-2,1:-1]*SNR[:-2,1:-1] - flow_dir[4][1:-1,1:-1]*SNR[1:-1,1:-1]
+        snd[1:-1,1:-1] = snd[1:-1,1:-1] + flow_dir[4][:-2,1:-1]*snr[:-2,1:-1] - flow_dir[4][1:-1,1:-1]*snr[1:-1,1:-1]
         # Neighbour to the SouthWest
-        SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir[5][:-2,2:]*SNR[:-2,2:] - flow_dir[5][1:-1,1:-1]*SNR[1:-1,1:-1]
+        snd[1:-1,1:-1] = snd[1:-1,1:-1] + flow_dir[5][:-2,2:]*snr[:-2,2:] - flow_dir[5][1:-1,1:-1]*snr[1:-1,1:-1]
         # Neighbour to the West
-        SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir[6][1:-1,2:]*SNR[1:-1,2:] - flow_dir[6][1:-1,1:-1]*SNR[1:-1,1:-1]
+        snd[1:-1,1:-1] = snd[1:-1,1:-1] + flow_dir[6][1:-1,2:]*snr[1:-1,2:] - flow_dir[6][1:-1,1:-1]*snr[1:-1,1:-1]
         # Neighbour to the NorthWest
-        SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir[7][2:,2:]*SNR[2:,2:] - flow_dir[7][1:-1,1:-1]*SNR[1:-1,1:-1]
-    
+        snd[1:-1,1:-1] = snd[1:-1,1:-1] + flow_dir[7][2:,2:]*snr[2:,2:] - flow_dir[7][1:-1,1:-1]*snr[1:-1,1:-1]
+
     if routing=='d8' :
         direction_indices = {'east': 1, 'northeast': 128, 'north': 64,'northwest': 32, 'west': 16, 'southwest': 8,'south': 4, 'southeast':2}
         # Neighbour to the East
-        flow_dir_E = np.copy(flow_dir)
-        flow_dir_E[np.where(flow_dir!=1)[0],np.where(flow_dir!=1)[1]]=0
-        flow_dir_E[np.where(flow_dir==1)[0],np.where(flow_dir==1)[1]]=1
-        SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir_E[1:-1,:-2]*SNR[1:-1,:-2] - flow_dir_E[1:-1,1:-1]*SNR[1:-1,1:-1] 
+        flow_dir_E = flow_dir==1
+        snd[1:-1,1:-1] = snd[1:-1,1:-1] + flow_dir_E[1:-1,:-2]*snr[1:-1,:-2] - flow_dir_E[1:-1,1:-1]*snr[1:-1,1:-1]
         # Neighbour to the NorthEast
-        flow_dir_NE = np.copy(flow_dir)
-        flow_dir_NE[np.where(flow_dir!=128)[0],np.where(flow_dir!=128)[1]]=0
-        flow_dir_NE[np.where(flow_dir==128)[0],np.where(flow_dir==128)[1]]=1
-        SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir_NE[2:,:-2]*SNR[2:,:-2] - flow_dir_NE[1:-1,1:-1]*SNR[1:-1,1:-1]
+        flow_dir_NE = flow_dir==128
+        snd[1:-1,1:-1] = snd[1:-1,1:-1] + flow_dir_NE[2:,:-2]*snr[2:,:-2] - flow_dir_NE[1:-1,1:-1]*snr[1:-1,1:-1]
         # Neighbour to the North
-        flow_dir_N = np.copy(flow_dir)
-        flow_dir_N[np.where(flow_dir!=64)[0],np.where(flow_dir!=64)[1]]=0
-        flow_dir_N[np.where(flow_dir==64)[0],np.where(flow_dir==64)[1]]=1
-        SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir_N[2:,1:-1]*SNR[2:,1:-1] - flow_dir_N[1:-1,1:-1]*SNR[1:-1,1:-1]
+        flow_dir_N = flow_dir==64
+        snd[1:-1,1:-1] = snd[1:-1,1:-1] + flow_dir_N[2:,1:-1]*snr[2:,1:-1] - flow_dir_N[1:-1,1:-1]*snr[1:-1,1:-1]
         # Neighbour to the NorthWest
-        flow_dir_NO = np.copy(flow_dir)
-        flow_dir_NO[np.where(flow_dir!=32)[0],np.where(flow_dir!=32)[1]]=0
-        flow_dir_NO[np.where(flow_dir==32)[0],np.where(flow_dir==32)[1]]=1
-        SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir_NO[2:,2:]*SNR[2:,2:] - flow_dir_NO[1:-1,1:-1]*SNR[1:-1,1:-1]
+        flow_dir_NO = flow_dir==32
+        snd[1:-1,1:-1] = snd[1:-1,1:-1] + flow_dir_NO[2:,2:]*snr[2:,2:] - flow_dir_NO[1:-1,1:-1]*snr[1:-1,1:-1]
         # Neighbour to the West
-        flow_dir_O = np.copy(flow_dir)
-        flow_dir_O[np.where(flow_dir!=16)[0],np.where(flow_dir!=16)[1]]=0
-        flow_dir_O[np.where(flow_dir==16)[0],np.where(flow_dir==16)[1]]=1
-        SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir_O[1:-1,2:]*SNR[1:-1,2:] - flow_dir_O[1:-1,1:-1]*SNR[1:-1,1:-1]
+        flow_dir_O = flow_dir==16
+        snd[1:-1,1:-1] = snd[1:-1,1:-1] + flow_dir_O[1:-1,2:]*snr[1:-1,2:] - flow_dir_O[1:-1,1:-1]*snr[1:-1,1:-1]
         # Neighbour to the SouthWest
-        flow_dir_SO = np.copy(flow_dir)
-        flow_dir_SO[np.where(flow_dir!=8)[0],np.where(flow_dir!=8)[1]]=0
-        flow_dir_SO[np.where(flow_dir==8)[0],np.where(flow_dir==8)[1]]=1
-        SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir_SO[:-2,2:]*SNR[:-2,2:] - flow_dir_SO[1:-1,1:-1]*SNR[1:-1,1:-1]
+        flow_dir_SO = flow_dir==8
+        snd[1:-1,1:-1] = snd[1:-1,1:-1] + flow_dir_SO[:-2,2:]*snr[:-2,2:] - flow_dir_SO[1:-1,1:-1]*snr[1:-1,1:-1]
         # Neighbour to the South
-        flow_dir_S = np.copy(flow_dir)
-        flow_dir_S[np.where(flow_dir!=4)[0],np.where(flow_dir!=4)[1]]=0
-        flow_dir_S[np.where(flow_dir==4)[0],np.where(flow_dir==4)[1]]=1
-        SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir_S[:-2,1:-1]*SNR[:-2,1:-1] - flow_dir_S[1:-1,1:-1]*SNR[1:-1,1:-1]
+        flow_dir_S = flow_dir==4
+        snd[1:-1,1:-1] = snd[1:-1,1:-1] + flow_dir_S[:-2,1:-1]*snr[:-2,1:-1] - flow_dir_S[1:-1,1:-1]*snr[1:-1,1:-1]
         # Neighbour to the SouthEast
-        flow_dir_SE = np.copy(flow_dir)
-        flow_dir_SE[np.where(flow_dir!=2)[0],np.where(flow_dir!=2)[1]]=0
-        flow_dir_SE[np.where(flow_dir==2)[0],np.where(flow_dir==2)[1]]=1
-        SND[1:-1,1:-1] = SND[1:-1,1:-1] + flow_dir_SE[:-2,:-2]*SNR[:-2,:-2] - flow_dir_SE[1:-1,1:-1]*SNR[1:-1,1:-1]
+        flow_dir_SE = flow_dir==2
+        snd[1:-1,1:-1] = snd[1:-1,1:-1] + flow_dir_SE[:-2,:-2]*snr[:-2,:-2] - flow_dir_SE[1:-1,1:-1]*snr[1:-1,1:-1]
 
-    return SND 
+    return snd
 
 def precipitations(gdir,dem,date,density):
     """ This function initialize the SND matrix based with solid preciptation based on climate data. It is designed to 
@@ -304,7 +288,7 @@ def precipitations(gdir,dem,date,density):
     precipitations = np.full(np.shape(dem),prcp)
     precipitations[np.where(temperatures >= 2)] = 0
     precipitations[np.where((temperatures > 0) & (temperatures < 2))] = (1 - (0.5*temperatures[np.where((temperatures > 0) & (temperatures < 2))])) * prcp # coef * prcp
-    precipitations = precipitations / density
+    precipitations = precipitations/density
 
     return precipitations,temperatures
 
@@ -373,7 +357,7 @@ def reframe_tif(input_path,output_path=None,useas_app=False,extent=[[None,None],
     if plotting == True:
         plot = input('Press y if the reframed dem needs to be plotted')
 
-    if plot=='y' :
+    if plot=='y':
          
         dem_reframed = rasterio.open(output_path)
         dem_reframed = dem_reframed.read(1).astype('float64')
@@ -489,7 +473,7 @@ def initialize_snowslide_from_SAFRAN(dem_path,ds_paths,massif_id=3,frequency="M"
         """    
         # Charges xarray dataset
         ds = xr.load_dataset(ds_path)
-        if 'massif' in ds.coords : 
+        if 'massif' in ds.coords :
             ds = ds.sel(massif=massif_id)
             ds = ds.drop(["massif"])
 

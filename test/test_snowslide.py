@@ -132,10 +132,10 @@ def test_mass_conservation2() :
 
     # We launch snowslide
     # Snowslide simulation
-    param_routing={"routing":'mfd',"preprocessing":True}
+    param_routing={"routing":'mfd',"preprocessing":True,"compute_edges":True}
     snd0 = np.zeros(np.shape(dem))
     snd0[5:-5,5:-5] = 1 
-    snd = snowslide_base(dem_path,SND0=snd0,param_routing=param_routing)
+    snd = snowslide_base(dem_path,snd0=snd0,param_routing=param_routing)
     
     # Compute total masses
     initial_mass = np.sum(snd0)
@@ -155,9 +155,9 @@ def test_maxSND_respected():
     dem_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),'data', 'DEM_Mt_blanc_Talefre.tif')
     dem = rasterio.open(dem_path).read(1)
     
-    param_routing={"routing":'mfd',"preprocessing":True}
+    param_routing={"routing":'mfd',"preprocessing":True,"compute_edges":True}
     snd0 = np.full(np.shape(dem),float(1))
-    snd = snowslide_base(dem_path,SND0=snd0,param_routing=param_routing,epsilon=1e-5)
+    snd = snowslide_base(dem_path,snd0=snd0,param_routing=param_routing,epsilon=1e-5)
     
     resx,resy = rasterio.open(dem_path).res
     slp = slope(dem+snd,resx,resy)
@@ -181,11 +181,11 @@ def test_run_snowslide():
 
     dem_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),'data', 'DEM_Mt_blanc_Talefre.tif')
     dem = rasterio.open(dem_path).read(1)
-    param_routing={"routing":'mfd',"preprocessing":True}
+    param_routing={"routing":'mfd',"preprocessing":True,"compute_edges":True}
     snd0 = np.full(np.shape(dem),float(1))
     bolean=True
     try:
-        snowslide_base(dem_path,SND0=snd0,param_routing=param_routing)
+        snowslide_base(dem_path,snd0=snd0,param_routing=param_routing)
     except Exception as e:
         bolean=False
         print(e)
@@ -214,15 +214,15 @@ def test_flat_holdSnow():
             dst.write(dem, 1)
 
     param_routing={"routing":'mfd',"preprocessing":True}
-    SND0 = np.zeros(np.shape(dem))
-    SND0[1:-1,1:-1] = 1
+    snd0 = np.zeros(np.shape(dem))
+    snd0[1:-1,1:-1] = 1
 
     # Simulation using snowslide 
-    SND = snowslide_base(dem_path,SND0=SND0,param_routing=param_routing)
+    snd = snowslide_base(dem_path,snd0=snd0,param_routing=param_routing)
     slp = slope(dem,20,20)
 
-    steep_area = np.sum(SND[np.where(slp >= 40)])
-    flat_area = np.sum(SND[np.where(slp < 40)])
+    steep_area = np.sum(snd[np.where(slp >= 40)])
+    flat_area = np.sum(snd[np.where(slp < 40)])
 
     #delete dem file
     if os.path.exists(dem_path):
@@ -249,7 +249,7 @@ def test_nosnow_nochanges() :
     dem_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),'data', 'DEM_Mt_blanc_Talefre.tif')
     dem = rasterio.open(dem_path).read(1)
     snd0 = np.zeros(np.shape(dem))
-    snd = snowslide_base(dem_path,SND0=snd0)
+    snd = snowslide_base(dem_path,snd0=snd0)
 
     assert np.array_equal(snd, snd0)  
 
@@ -264,7 +264,7 @@ def test_noslope_nochanges():
         dst.write(dem, 1)
 
     snd0 = np.full(np.shape(dem),1.0)
-    snd = snowslide_base(dem_path,SND0=snd0)
+    snd = snowslide_base(dem_path,snd0=snd0)
 
     #delete dem file
     if os.path.exists(dem_path):
@@ -273,13 +273,19 @@ def test_noslope_nochanges():
     assert np.array_equal(snd, snd0)
 
 def test_reference_talefre():
+    # test with 'mfd' method
     dem_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),'data', 'DEM_Mt_blanc_Talefre.tif')
     snd0 = np.full(np.shape(rasterio.open(dem_path).read(1)),1.0)
     snd = snowslide_base(dem_path,SND0=snd0)
-    snd_reference = np.load("/Users/llemcf/Desktop/Stage_IGE_2023/GitHub_snowslide/snowslide/test/data/reference_talefre_output.npy")
+    ref_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),'data', 'reference_talefre_output_mfd.npy')
+    snd_reference = np.load(ref_path)
 
-    assert np.array_equal(snd,snd_reference)  
+    assert np.array_equal(snd,snd_reference)
 
+    # test with 'd8' method
+    param_routing={"routing":'d8', "preprocessing":True,"compute_edges":True}
+    snd = snowslide_base(dem_path,SND0=snd0,param_routing=param_routing)
+    ref_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),'data', 'reference_talefre_output_d8.npy')
+    snd_reference = np.load(ref_path)
 
-
-
+    assert np.array_equal(snd,snd_reference)

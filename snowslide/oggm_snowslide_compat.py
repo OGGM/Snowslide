@@ -38,11 +38,11 @@ def snowslide_to_gdir(gdir, routing="mfd"):
     path_to_dem = gdir.get_filepath("dem")
 
     # Launch snowslide simulation with idealized 1m initial snow depth
-    SND0 = np.ones_like(ds.topo.data)
-    param_routing = {"routing": routing, "preprocessing": True}
-    SND = snowslide_base(
+    snd0 = np.ones_like(ds.topo.data)
+    param_routing = {"routing": routing, "preprocessing": True,"compute_edges":True}
+    snd = snowslide_base(
         path_to_dem,
-        SND0=SND0,
+        snd0=snd0,
         param_routing=param_routing,
         glacier_id=f"({gdir.rgi_id}) ",
     )
@@ -58,7 +58,7 @@ def snowslide_to_gdir(gdir, routing="mfd"):
 
         v.units = "m"
         v.long_name = "Snowcover after avalanches"
-        v[:] = SND
+        v[:] = snd
 
 
 @utils.entity_task(log)

@@ -11,7 +11,7 @@ __version__ = '0.0.1'
 from snowslide.functions import dem_flow 
 from snowslide.functions import precipitations
 from snowslide.functions import precipitations_base
-from snowslide.functions import SND_max_exponential
+from snowslide.functions import snd_max_exponential
 from snowslide.functions import snow_routing
 from snowslide.functions import slope
 from snowslide.functions import reframe_tif
