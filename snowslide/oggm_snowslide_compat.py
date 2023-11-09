@@ -39,7 +39,7 @@ def snowslide_to_gdir(gdir, routing="mfd"):
 
     # Launch snowslide simulation with idealized 1m initial snow depth
     snd0 = np.ones_like(ds.topo.data)
-    param_routing = {"routing": routing, "preprocessing": True,"compute_edges":True}
+    param_routing = {"routing": routing, "preprocessing": True, "compute_edges": True}
     snd = snowslide_base(
         path_to_dem,
         snd0=snd0,
@@ -148,12 +148,15 @@ def binned_statistics(gdir):
         valid_mask = ds["glacier_mask"].data
         avalanche = ds["snowslide_1m"].data
 
-    bsize = 50.
+    bsize = 50.0
     dem_on_ice = dem[valid_mask]
     avalanche_on_ice = avalanche[valid_mask]
 
-    bins = np.arange(utils.nicenumber(dem_on_ice.min(), bsize, lower=True),
-                     utils.nicenumber(dem_on_ice.max(), bsize) + 0.01, bsize)
+    bins = np.arange(
+        utils.nicenumber(dem_on_ice.min(), bsize, lower=True),
+        utils.nicenumber(dem_on_ice.max(), bsize) + 0.01,
+        bsize,
+    )
 
     bi = np.digitize(dem_on_ice, bins)
 
@@ -161,10 +164,11 @@ def binned_statistics(gdir):
     # Easy stats - this should always be possible
     d["rgi_id"] = gdir.rgi_id
     d["rgi_area_km2"] = gdir.rgi_area_km2
-    for b, bs in enumerate((bins[1:] + bins[:-1])/2):
-        d['{}'.format(np.round(bs).astype(int))] = np.mean(avalanche_on_ice[bi == b])
+    for b, bs in enumerate((bins[1:] + bins[:-1]) / 2):
+        d["{}".format(np.round(bs).astype(int))] = np.mean(avalanche_on_ice[bi == b])
 
     return d
+
 
 @utils.global_task(log)
 def compile_binned_statistics(gdirs, filesuffix="", path=True):
