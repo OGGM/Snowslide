@@ -133,7 +133,7 @@ def compile_snowslide_statistics(gdirs, filesuffix="", path=True):
     return out
 
 
-@entity_task(log)
+@utils.entity_task(log)
 def binned_statistics(gdir):
     """Binned snowslide stats.
 
@@ -165,3 +165,36 @@ def binned_statistics(gdir):
         d['{}'.format(np.round(bs).astype(int))] = np.mean(avalanche_on_ice[bi == b])
 
     return d
+
+@utils.global_task(log)
+def compile_binned_statistics(gdirs, filesuffix="", path=True):
+    """Gather statistics about dems on binned elevations.
+
+    Parameters
+    ----------
+    gdirs : list of :py:class:`oggm.GlacierDirectory` objects
+        the glacier directories to process
+    filesuffix : str
+        add suffix to output file
+    path : str, bool
+        Set to "True" in order  to store the info in the working directory
+        Set to a path to store the file to your chosen location
+    """
+    from oggm.workflow import execute_entity_task
+
+    out_df = execute_entity_task(binned_statistics, gdirs)
+
+    out = pd.DataFrame(out_df).set_index("rgi_id")
+
+    if path:
+        if path is True:
+            out.to_csv(
+                os.path.join(
+                    cfg.PATHS["working_dir"],
+                    ("binned_statistics" + filesuffix + ".csv"),
+                )
+            )
+        else:
+            out.to_csv(path)
+
+    return out
