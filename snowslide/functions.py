@@ -239,51 +239,43 @@ def snow_routing(snd, snd_max, flow_dir, routing):
             "Northwest": 7,
         }
         # Neighbour to the North
-        snd[1:-1, 1:-1] = (
-            snd[1:-1, 1:-1]
-            + flow_dir[0][2:, 1:-1] * snr[2:, 1:-1]
+        snd[1:-1, 1:-1] += (
+            flow_dir[0][2:, 1:-1] * snr[2:, 1:-1]
             - flow_dir[0][1:-1, 1:-1] * snr[1:-1, 1:-1]
         )
         # Neighbour to the NorthEast
-        snd[1:-1, 1:-1] = (
-            snd[1:-1, 1:-1]
-            + flow_dir[1][2:, :-2] * snr[2:, :-2]
+        snd[1:-1, 1:-1] += (
+            flow_dir[1][2:, :-2] * snr[2:, :-2]
             - flow_dir[1][1:-1, 1:-1] * snr[1:-1, 1:-1]
         )
         # Neighbour to the East
-        snd[1:-1, 1:-1] = (
-            snd[1:-1, 1:-1]
-            + flow_dir[2][1:-1, :-2] * snr[1:-1, :-2]
+        snd[1:-1, 1:-1] += (
+            flow_dir[2][1:-1, :-2] * snr[1:-1, :-2]
             - flow_dir[2][1:-1, 1:-1] * snr[1:-1, 1:-1]
         )
         # Neighbour to the SouthEast
-        snd[1:-1, 1:-1] = (
-            snd[1:-1, 1:-1]
-            + flow_dir[3][:-2, :-2] * snr[:-2, :-2]
+        snd[1:-1, 1:-1] += (
+            flow_dir[3][:-2, :-2] * snr[:-2, :-2]
             - flow_dir[3][1:-1, 1:-1] * snr[1:-1, 1:-1]
         )
         # Neighbour to the South
-        snd[1:-1, 1:-1] = (
-            snd[1:-1, 1:-1]
-            + flow_dir[4][:-2, 1:-1] * snr[:-2, 1:-1]
+        snd[1:-1, 1:-1] += (
+            flow_dir[4][:-2, 1:-1] * snr[:-2, 1:-1]
             - flow_dir[4][1:-1, 1:-1] * snr[1:-1, 1:-1]
         )
         # Neighbour to the SouthWest
-        snd[1:-1, 1:-1] = (
-            snd[1:-1, 1:-1]
-            + flow_dir[5][:-2, 2:] * snr[:-2, 2:]
+        snd[1:-1, 1:-1] += (
+            flow_dir[5][:-2, 2:] * snr[:-2, 2:]
             - flow_dir[5][1:-1, 1:-1] * snr[1:-1, 1:-1]
         )
         # Neighbour to the West
-        snd[1:-1, 1:-1] = (
-            snd[1:-1, 1:-1]
-            + flow_dir[6][1:-1, 2:] * snr[1:-1, 2:]
+        snd[1:-1, 1:-1] += (
+            flow_dir[6][1:-1, 2:] * snr[1:-1, 2:]
             - flow_dir[6][1:-1, 1:-1] * snr[1:-1, 1:-1]
         )
         # Neighbour to the NorthWest
-        snd[1:-1, 1:-1] = (
-            snd[1:-1, 1:-1]
-            + flow_dir[7][2:, 2:] * snr[2:, 2:]
+        snd[1:-1, 1:-1] += (
+            flow_dir[7][2:, 2:] * snr[2:, 2:]
             - flow_dir[7][1:-1, 1:-1] * snr[1:-1, 1:-1]
         )
 
@@ -300,58 +292,50 @@ def snow_routing(snd, snd_max, flow_dir, routing):
         }
         # Neighbour to the East
         flow_dir_E = flow_dir == 1
-        snd[1:-1, 1:-1] = (
-            snd[1:-1, 1:-1]
-            + flow_dir_E[1:-1, :-2] * snr[1:-1, :-2]
+        snd[1:-1, 1:-1] += (
+            flow_dir_E[1:-1, :-2] * snr[1:-1, :-2]
             - flow_dir_E[1:-1, 1:-1] * snr[1:-1, 1:-1]
         )
         # Neighbour to the NorthEast
         flow_dir_NE = flow_dir == 128
-        snd[1:-1, 1:-1] = (
-            snd[1:-1, 1:-1]
-            + flow_dir_NE[2:, :-2] * snr[2:, :-2]
+        snd[1:-1, 1:-1] += (
+            flow_dir_NE[2:, :-2] * snr[2:, :-2]
             - flow_dir_NE[1:-1, 1:-1] * snr[1:-1, 1:-1]
         )
         # Neighbour to the North
         flow_dir_N = flow_dir == 64
-        snd[1:-1, 1:-1] = (
-            snd[1:-1, 1:-1]
-            + flow_dir_N[2:, 1:-1] * snr[2:, 1:-1]
+        snd[1:-1, 1:-1] += (
+            flow_dir_N[2:, 1:-1] * snr[2:, 1:-1]
             - flow_dir_N[1:-1, 1:-1] * snr[1:-1, 1:-1]
         )
         # Neighbour to the NorthWest
         flow_dir_NO = flow_dir == 32
-        snd[1:-1, 1:-1] = (
-            snd[1:-1, 1:-1]
-            + flow_dir_NO[2:, 2:] * snr[2:, 2:]
+        snd[1:-1, 1:-1] += (
+            flow_dir_NO[2:, 2:] * snr[2:, 2:]
             - flow_dir_NO[1:-1, 1:-1] * snr[1:-1, 1:-1]
         )
         # Neighbour to the West
         flow_dir_O = flow_dir == 16
-        snd[1:-1, 1:-1] = (
-            snd[1:-1, 1:-1]
-            + flow_dir_O[1:-1, 2:] * snr[1:-1, 2:]
+        snd[1:-1, 1:-1] += (
+            flow_dir_O[1:-1, 2:] * snr[1:-1, 2:]
             - flow_dir_O[1:-1, 1:-1] * snr[1:-1, 1:-1]
         )
         # Neighbour to the SouthWest
         flow_dir_SO = flow_dir == 8
-        snd[1:-1, 1:-1] = (
-            snd[1:-1, 1:-1]
-            + flow_dir_SO[:-2, 2:] * snr[:-2, 2:]
+        snd[1:-1, 1:-1] += (
+            flow_dir_SO[:-2, 2:] * snr[:-2, 2:]
             - flow_dir_SO[1:-1, 1:-1] * snr[1:-1, 1:-1]
         )
         # Neighbour to the South
         flow_dir_S = flow_dir == 4
-        snd[1:-1, 1:-1] = (
-            snd[1:-1, 1:-1]
-            + flow_dir_S[:-2, 1:-1] * snr[:-2, 1:-1]
+        snd[1:-1, 1:-1] += (
+            flow_dir_S[:-2, 1:-1] * snr[:-2, 1:-1]
             - flow_dir_S[1:-1, 1:-1] * snr[1:-1, 1:-1]
         )
         # Neighbour to the SouthEast
         flow_dir_SE = flow_dir == 2
-        snd[1:-1, 1:-1] = (
-            snd[1:-1, 1:-1]
-            + flow_dir_SE[:-2, :-2] * snr[:-2, :-2]
+        snd[1:-1, 1:-1] += (
+            flow_dir_SE[:-2, :-2] * snr[:-2, :-2]
             - flow_dir_SE[1:-1, 1:-1] * snr[1:-1, 1:-1]
         )
 

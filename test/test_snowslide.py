@@ -317,7 +317,7 @@ def test_noslope_nochanges():
     assert np.array_equal(snd, snd0)
 
 
-def test_reference_talefre():
+def test_reference_talefre_mfd():
     # test with 'mfd' method
     dem_path = os.path.join(
         os.path.abspath(os.path.dirname(__file__)), "data", "DEM_Mt_blanc_Talefre.tif"
@@ -331,9 +331,15 @@ def test_reference_talefre():
     )
     snd_reference = np.load(ref_path)
 
-    assert np.array_equal(snd, snd_reference)
+    assert np.allclose(snd, snd_reference, rtol=1e-4, atol=1e-4)
 
+
+def test_reference_talefre_d8():
     # test with 'd8' method
+    dem_path = os.path.join(
+        os.path.abspath(os.path.dirname(__file__)), "data", "DEM_Mt_blanc_Talefre.tif"
+    )
+    snd0 = np.full(np.shape(rasterio.open(dem_path).read(1)), 1.0)
     param_routing = {"routing": "d8", "preprocessing": True, "compute_edges": True}
     snd = snowslide_base(dem_path, snd0=snd0, param_routing=param_routing)
     ref_path = os.path.join(
@@ -343,4 +349,4 @@ def test_reference_talefre():
     )
     snd_reference = np.load(ref_path)
 
-    assert np.array_equal(snd, snd_reference)
+    assert np.allclose(snd, snd_reference, rtol=1e-4, atol=1e-4)
