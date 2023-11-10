@@ -98,7 +98,7 @@ def snowslide_statistics(gdir):
 
 
 @utils.global_task(log)
-def compile_snowslide_statistics(gdirs, filesuffix="", path=True):
+def compile_snowslide_statistics(gdirs, filesuffix="", dir_path=None):
     """Gather as much statistics as possible about a list of glaciers.
 
     It can be used to do result diagnostics and other stuffs.
@@ -109,9 +109,8 @@ def compile_snowslide_statistics(gdirs, filesuffix="", path=True):
         the glacier directories to process
     filesuffix : str
         add suffix to output file
-    path : str, bool
-        Set to "True" in order  to store the info in the working directory
-        Set to a path to store the file to your chosen location
+    path : str
+        Folder where to write the csv file. Defaults to cfg.PATHS["working_dir"]
     """
     from oggm.workflow import execute_entity_task
 
@@ -119,16 +118,11 @@ def compile_snowslide_statistics(gdirs, filesuffix="", path=True):
 
     out = pd.DataFrame(out_df).set_index("rgi_id")
 
-    if path:
-        if path is True:
-            out.to_csv(
-                os.path.join(
-                    cfg.PATHS["working_dir"],
-                    ("snowslide_statistics" + filesuffix + ".csv"),
-                )
-            )
-        else:
-            out.to_csv(path)
+    if dir_path is None:
+        dir_path = cfg.PATHS["working_dir"]
+
+    out_file = os.path.join(dir_path, f"snowslide_statistics{filesuffix}.csv")
+    out.to_csv(out_file)
 
     return out
 
@@ -185,7 +179,7 @@ def binned_statistics(gdir):
 
 
 @utils.global_task(log)
-def compile_binned_statistics(gdirs, filesuffix="", path=True):
+def compile_binned_statistics(gdirs, filesuffix="", dir_path=None):
     """Gather statistics about dems on binned elevations.
 
     Parameters
@@ -194,9 +188,8 @@ def compile_binned_statistics(gdirs, filesuffix="", path=True):
         the glacier directories to process
     filesuffix : str
         add suffix to output file
-    path : str, bool
-        Set to "True" in order  to store the info in the working directory
-        Set to a path to store the file to your chosen location
+    path : str
+        Folder where to write the csv file. Defaults to cfg.PATHS["working_dir"]
     """
     from oggm.workflow import execute_entity_task
 
@@ -208,19 +201,13 @@ def compile_binned_statistics(gdirs, filesuffix="", path=True):
     ava = ava[sorted(ava.columns)]
     area = area[sorted(area.columns)]
 
-    if path:
-        if path is True:
-            ava.to_csv(
-                os.path.join(
-                    cfg.PATHS["working_dir"],
-                    ("binned_avalanche_statistics" + filesuffix + ".csv"),
-                )
-            )
-            area.to_csv(
-                os.path.join(
-                    cfg.PATHS["working_dir"],
-                    ("binned_area" + filesuffix + ".csv"),
-                )
-            )
+    if dir_path is None:
+        dir_path = cfg.PATHS["working_dir"]
+
+    out_file = os.path.join(dir_path, f"binned_avalanche_statistics{filesuffix}.csv")
+    ava.to_csv(out_file)
+
+    out_file = os.path.join(dir_path, f"binned_area{filesuffix}.csv")
+    area.to_csv(out_file)
 
     return ava, area
