@@ -133,7 +133,15 @@ def compile_snowslide_statistics(gdirs, filesuffix="", path=True):
     return out
 
 
-@utils.entity_task(log)
+def _fallback(gdir):
+    """If something wrong happens below"""
+    d = dict()
+    # Easy stats - this should always be possible
+    d["rgi_id"] = gdir.rgi_id
+    return d
+
+
+@utils.entity_task(log, fallback=_fallback)
 def binned_statistics(gdir):
     """Binned snowslide stats.
 
@@ -143,14 +151,23 @@ def binned_statistics(gdir):
         where to write the data
     """
 
-    with xr.open_dataset(gdir.get_filepath("gridded_data")) as ds:
-        dem = ds["topo"].data
-        valid_mask = ds["glacier_mask"].data
-        avalanche = ds["snowslide_1m"].data
+    d1 = dict()
+    d2 = dict()
+    # Easy stats - this should always be possible
+    d1["rgi_id"] = gdir.rgi_id
+    d2["rgi_id"] = gdir.rgi_id
+
+    try:
+        with xr.open_dataset(gdir.get_filepath("gridded_data")) as ds:
+            dem = ds["topo"].data
+            valid_mask = ds["glacier_mask"].data
+            avalanche = ds["snowslide_1m"].data
+    except:
+        return d1, d2
 
     bsize = 50.0
-    dem_on_ice = dem[valid_mask]
-    avalanche_on_ice = avalanche[valid_mask]
+    dem_on_ice = dem[valid_mask == 1]
+    avalanche_on_ice = avalanche[valid_mask == 1]
 
     bins = np.arange(
         utils.nicenumber(dem_on_ice.min(), bsize, lower=True),
@@ -158,16 +175,13 @@ def binned_statistics(gdir):
         bsize,
     )
 
-    bi = np.digitize(dem_on_ice, bins)
-
-    d = dict()
-    # Easy stats - this should always be possible
-    d["rgi_id"] = gdir.rgi_id
-    d["rgi_area_km2"] = gdir.rgi_area_km2
+    topo_digi = np.digitize(dem_on_ice, bins) - 1
     for b, bs in enumerate((bins[1:] + bins[:-1]) / 2):
-        d["{}".format(np.round(bs).astype(int))] = np.mean(avalanche_on_ice[bi == b])
+        on_bin = topo_digi == b
+        d1["{}".format(np.round(bs).astype(int))] = np.mean(avalanche_on_ice[on_bin])
+        d2["{}".format(np.round(bs).astype(int))] = np.sum(on_bin) * gdir.grid.dx**2
 
-    return d
+    return d1, d2
 
 
 @utils.global_task(log)
@@ -188,17 +202,25 @@ def compile_binned_statistics(gdirs, filesuffix="", path=True):
 
     out_df = execute_entity_task(binned_statistics, gdirs)
 
-    out = pd.DataFrame(out_df).set_index("rgi_id")
+    ava = pd.DataFrame([d[0] for d in out_df]).set_index("rgi_id")
+    area = pd.DataFrame([d[1] for d in out_df]).set_index("rgi_id")
+
+    ava = ava[sorted(ava.columns)]
+    area = area[sorted(area.columns)]
 
     if path:
         if path is True:
-            out.to_csv(
+            ava.to_csv(
                 os.path.join(
                     cfg.PATHS["working_dir"],
-                    ("binned_statistics" + filesuffix + ".csv"),
+                    ("binned_avalanche_statistics" + filesuffix + ".csv"),
                 )
             )
-        else:
-            out.to_csv(path)
+            area.to_csv(
+                os.path.join(
+                    cfg.PATHS["working_dir"],
+                    ("binned_area" + filesuffix + ".csv"),
+                )
+            )
 
-    return out
+    return ava, area
