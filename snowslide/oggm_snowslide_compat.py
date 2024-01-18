@@ -61,7 +61,15 @@ def snowslide_to_gdir(gdir, routing="mfd"):
         v[:] = snd
 
 
-@utils.entity_task(log)
+def _fallback(gdir):
+    """If something wrong happens below"""
+    d = dict()
+    # Easy stats - this should always be possible
+    d["rgi_id"] = gdir.rgi_id
+    return d
+
+
+@utils.entity_task(log, fallback=_fallback)
 def snowslide_statistics(gdir):
     """Gather statistics about the Snowslide snow redistribution"""
     resolution = abs(gdir.grid.dx)
@@ -125,14 +133,6 @@ def compile_snowslide_statistics(gdirs, filesuffix="", dir_path=None):
     out.to_csv(out_file)
 
     return out
-
-
-def _fallback(gdir):
-    """If something wrong happens below"""
-    d = dict()
-    # Easy stats - this should always be possible
-    d["rgi_id"] = gdir.rgi_id
-    return d
 
 
 @utils.entity_task(log, fallback=_fallback)
