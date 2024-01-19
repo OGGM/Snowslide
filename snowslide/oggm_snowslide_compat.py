@@ -72,7 +72,12 @@ def _fallback(gdir):
 @utils.entity_task(log, fallback=_fallback)
 def snowslide_statistics(gdir):
     """Gather statistics about the Snowslide snow redistribution"""
-    resolution = abs(gdir.grid.dx)
+
+    try:
+        # This is because the fallback doesnt have a return value (yet)
+        resolution = abs(gdir.grid.dx)
+    except:
+        resolution = np.NaN
 
     d = dict()
     # Easy stats - this should always be possible
