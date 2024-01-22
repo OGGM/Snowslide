@@ -35,7 +35,6 @@ base_url = 'https://cluster.klima.uni-bremen.de/~fmaussion/runs/tests_snowslide/
 gdirs = workflow.init_glacier_directories(rgi_ids, prepro_base_url=base_url, from_prepro_level=3, prepro_border=80)
 gdir = gdirs[0]
 
-# %%
 # Get the path to the gridded data file & open it
 with xr.open_dataset(gdir.get_filepath('gridded_data')) as ds:
     ds = ds.load()
