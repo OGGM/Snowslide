@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import matplotlib.pyplot as plt
+from snowslide import oggm_snowslide_compat
 
 # %%
 import warnings
@@ -24,16 +25,31 @@ dir_path = utils.get_temp_dir('snowslide')
 cfg.PATHS['working_dir'] = utils.mkdir(dir_path)
 
 # %%
-# rgi_ids = ['RGI60-11.01450']  # This is Aletsch
+rgi_ids = ['RGI60-11.01450']  # This is Aletsch
 # rgi_ids = ['RGI60-11.00897']  # This is Hintereisferner
 # rgi_ids = ['RGI60-11.03466']  # This is Talefre
-rgi_ids = ['RGI60-11.03638']  # This is Argentiere
+# rgi_ids = ['RGI60-11.03638']  # This is Argentiere
+# rgi_ids = ['RGI60-15.03734']  # This is Changri Nup
+# rgi_ids = ['RGI60-11.03584'] # Tre les Eaux
+# rgi_ids = ['RGI60-15.03507'] # AX010
+# rgi_ids = ['RGI60-15.03403'] # Ama Dablan
 
-# This is the url with loads of data (dhdt, velocities, etc)
-base_url = 'https://cluster.klima.uni-bremen.de/~fmaussion/runs/tests_snowslide/alps_gdirs_whypso/'
+# Either rerun snowslide or read it from already ran data
+run_snowslide = 1
 
-gdirs = workflow.init_glacier_directories(rgi_ids, prepro_base_url=base_url, from_prepro_level=3, prepro_border=80)
+if run_snowslide==0:
+    # This is the url with snowslide already run!
+    base_url = 'https://cluster.klima.uni-bremen.de/~fmaussion/runs/tests_snowslide/alps_gdirs_whypso/'
+    gdirs = workflow.init_glacier_directories(rgi_ids, prepro_base_url=base_url, from_prepro_level=3, prepro_border=80)
+else:
+    # This is the url with loads of data (dhdt, velocities, etc)
+    base_url = 'https://cluster.klima.uni-bremen.de/~oggm/gdirs/oggm_v1.6/L3-L5_files/2023.1/elev_bands/W5E5_w_data/'
+    gdirs = workflow.init_glacier_directories(rgi_ids, prepro_base_url=base_url, from_prepro_level=3, prepro_border=80)
+    # run snowslide 
+    workflow.execute_entity_task(oggm_snowslide_compat.snowslide_to_gdir, gdirs)
+
 gdir = gdirs[0]
+
 
 # Get the path to the gridded data file & open it
 with xr.open_dataset(gdir.get_filepath('gridded_data')) as ds:
@@ -84,10 +100,12 @@ for year in range(2000, 2020):
 
 df_control.mean(axis=1).plot(label='Control')
 df_ava.mean(axis=1).plot(label='Avalanches')
-plt.legend()
-plt.title('2000-2020 SMB')
-plt.xlabel('Dis along flowline')
-plt.ylabel('Annual SMB')
+plt.legend(fontsize = 14)
+plt.title('2000-2020 SMB', fontsize = 20)
+plt.xlabel('Distance along flowline [m]', fontsize = 16)
+plt.ylabel('Annual SMB [mm w.eq/yr]', fontsize = 16)
+plt.xticks(fontsize=12)  
+plt.yticks(fontsize=12) 
 
 cfg.PARAMS['store_fl_diagnostics'] = True
 
@@ -117,18 +135,25 @@ with xr.open_dataset(gdir.get_filepath('fl_diagnostics', filesuffix='_ava'), gro
     ds_fl_ava = ds.load()
 
 # %%
-ds_sel_control = ds_fl_control.isel(time=-1).sel(dis_along_flowline=ds_fl_control.dis_along_flowline < 5000)
-ds_sel_ava = ds_fl_ava.isel(time=-1).sel(dis_along_flowline=ds_fl_ava.dis_along_flowline < 5000)
+ds_sel_control = ds_fl_control.isel(time=-1).sel(dis_along_flowline=ds_fl_control.dis_along_flowline < 4500)
+ds_sel_ava = ds_fl_ava.isel(time=-1).sel(dis_along_flowline=ds_fl_ava.dis_along_flowline < 4500)
+initial_cond = ds_fl_control.isel(time=0).sel(dis_along_flowline=ds_fl_control.dis_along_flowline < 4500)
 
 ds_sel_control.bed_h.plot(color='k');
 (ds_sel_control.bed_h + ds_sel_control.thickness_m).plot(label='Control');
 (ds_sel_ava.bed_h + ds_sel_ava.thickness_m).plot(label='Avalanches');
-plt.legend();
+plt.legend(fontsize = 14)
 
 # %%
+initial_cond.thickness_m.plot(label='Initial thickness', color='black', linestyle='--');
 ds_sel_control.thickness_m.plot(label='Control');
 ds_sel_ava.thickness_m.plot(label='Avalanches');
-plt.legend();
+plt.legend(fontsize = 14);
+plt.title('time = 100.0 yr', fontsize = 20)
+plt.xlabel('Distance along flowline [m]', fontsize = 16)
+plt.ylabel('Glacier thickness [m]', fontsize = 16)
+plt.xticks(fontsize=12)  
+plt.yticks(fontsize=12) 
 
 # %%
 ds_sel_control.ice_velocity_myr.plot(label='Control');
@@ -136,16 +161,6 @@ ds_sel_ava.ice_velocity_myr.plot(label='Avalanches');
 plt.legend();
 
 plt.show()
-
-# # %% [markdown]
-# # ## Things to think about
-
-# # %% [markdown]
-# # - here we apply avalanching as a constant positive MB - in the future, will the avalanche amounts change?
-# # - what about the time dependency?
-# # - importantly, we apply the avalanches without recalibrating the MB. The purpose will be to actually recalibrate the MB with the new information
-# # - on a glacier per glacier basis we will likely find that influence of avalanches will be small. But at the regional scale, in some regions in the himalayas, I think we can make a difference.
-# # - lots to think about!
 
 # # %%
 
