@@ -93,12 +93,28 @@ The ``display_2Dresults.py`` and ``display_3Dresults.py`` are used in snowslide_
 ``snowslide_main.py``. This function offers the same simulation as snowslide_base(), but simply provides functions 
 for recording and displaying output that can simplify the use of snowslide for the user in certain cases. We don't 
 use it at the moment, so we recommend that users use the snowslide_base() function instead. The rest of the readme 
-gives an example of using snowslide first in a snowslide workflow and then in an OGGM workflow. 
+gives an example of using snowslide first in a snowslide workflow and then in an OGGM workflow.
 
-## How to use snowslide in a classic workflow ?
+## Getting to grips with the snowslide environment
 
-See the notebook in https://github.com/GuillemCF/Snowslide/blob/main/example/How_to_use_snowslide.ipynb
+To make it easier for users to use the package, we have produced a series of tutorial notebooks that explain how to use snowslide, its principles and its performance. These notebooks fall into 3 categories:
 
-## How to use snowslide in a OGGM workflow
+## How to use the package 
 
-See the notebook in https://github.com/GuillemCF/Snowslide/blob/main/example/How_to_use_OGGMxSnowslide.ipynb
+To understand how to use snowslide in a classic workflow, see the notebook in https://github.com/GuillemCF/Snowslide/blob/main/example/How_to_use_snowslide.ipynb
+To understand how to use snowslide in a OGGM workflow, see the notebook in https://github.com/GuillemCF/Snowslide/blob/main/example/How_to_use_OGGMxSnowslide.ipynb
+To understand how to use snowslide output from the OGGM workflow, see the notebook in https://github.com/OGGM/Snowslide/blob/main/example/How_to_use_OGGMxSnowslidePrePro.ipynb
+To get to grips with the preprocessing functions associated with the algorithm, see the notebook ...
+
+## How is the model created? 
+
+To understand how snow heights can be initialized in the model, see the notebook: ...
+To understand how snow is routed and how convergence is ensured, see the notebook: ...
+
+## Analysis of various results and study of the algorithm's performance
+
+To see the results of the algorithm under idealized conditions, see the notebook: ...
+To see the results of the algorithm in real-life conditions, see the notebook: ...
+To see the results of the algorithm applied globally coupled with OGGM, see the notebook: ...
+To analyse the algorithm's computational performance, see the notebook: ...
+To understand the limit cases for using the algorithm, see the notebook: ...
