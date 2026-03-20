@@ -1016,9 +1016,7 @@ def mb_calibration_from_geodetic_mb_with_avalanches(
         climinfo = gdir.get_climate_info()
         climsource = climinfo['baseline_climate_source']
         if 'w5e5' in climsource.lower():
-            bias_df = get_temp_bias_dataframe('w5e5',
-                                              rgi_version=gdir.rgi_version,
-                                              regional=use_regional_avg)
+            bias_df = get_temp_bias_dataframe('w5e5')
         elif 'era5' in climsource.lower():
             bias_df = get_temp_bias_dataframe('era5',
                                               rgi_version=gdir.rgi_version,
