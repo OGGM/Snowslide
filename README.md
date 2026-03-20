@@ -93,15 +93,11 @@ present in the ``functions.py`` file. These are the following :
 
 ## Getting to grips with the Snowslide environment
 
-To make it easier for users to use the package, we have produced a series of tutorial notebooks that explain how to use snowslide in conjunction with OGGM. These notebooks fall into 3 categories:
+To make it easier for users to use the package, we have produced 2 tutorial notebooks that explain how to use snowslide in conjunction with OGGM:
 
-## How to apply SnowSlide on a DEM to obtain distributed avalanche correction factors
-
-Check out this [notebook](https://github.com/OGGM/Snowslide/blob/main/notebooks/avalanche_maps_for_gdirs.ipynb)
+To apply SnowSlide on a DEM to obtain distributed avalanche correction factors, check out this [notebook](https://github.com/OGGM/Snowslide/blob/main/notebooks/avalanche_maps_for_gdirs.ipynb)
 
 Note that you can easily adapt this notebook to work with your own DEM, independently from OGGM.
-
-## How to use SnowSlide in conjunction with OGGM
 
 If you intend to use the distributed avalanche correction factors to calibrate your mass balance model in OGGM
 check out this [notebook](https://github.com/OGGM/Snowslide/blob/main/notebooks/running_oggm_with_avalanches.ipynb)
