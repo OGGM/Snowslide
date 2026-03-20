@@ -22,7 +22,7 @@ The next steps goes into more details about how Snowslide works and should be us
 Snowslide relies on basic Python librairies for data manipulation. Nonetheless, 
 the routing of the snow is calculated by an external Python module called pysheds
 (docs : https://github.com/mdbartos/pysheds/). Running snowslide therefore requires
-installing pysheds v0.5 (pip install pysheds=0.5).
+installing pysheds v0.5 (pip install pysheds==0.5).
 
 The list of all snowslide dependencies is given as follow : 
 - pysheds v0.5
