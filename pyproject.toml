@@ -18,6 +18,9 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+[tool.setuptools.packages.find]
+include = ["snowslide*"]  # Only install the snowslide package
+
 [project.urls]
 "Homepage" = "https://github.com/OGGM/Snowslide"
 "Bug Tracker" = "https://github.com/OGGM/Snowslide/issues"
