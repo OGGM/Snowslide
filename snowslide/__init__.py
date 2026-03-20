@@ -18,7 +18,6 @@ from snowslide.functions import reframe_tif
 from snowslide.functions import resampling_dem
 
 from snowslide.snowslide_main import snowslide_base
-from snowslide.snowslide_main import snowslide_complete
 
 
 
