@@ -44,6 +44,13 @@ package in the active virtual environment chosen.
 
 Snowslide works independently but is also configured to work with the most recent version of OGGM (v1.6.3).
 
+If you want to modify the source code, you can clone the repository in your working directory and install it in editable mode:
+
+    git clone https://github.com/OGGM/Snowslide.git
+    cd Snowslide
+    pip install -e .
+    
+
 ## Package structure
 
 #### Directory root (``./``)
