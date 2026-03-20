@@ -42,7 +42,7 @@ using pip :
 This should clone the snowslide GitHub repository and install it as a python
 package in the active virtual environment chosen. 
 
-Snowslide works with the most recent version of OGGM (v1.6.3).
+Snowslide works independently but is also configured to work with the most recent version of OGGM (v1.6.3).
 
 ## Package structure
 
