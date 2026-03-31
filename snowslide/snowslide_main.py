@@ -1,5 +1,3 @@
-import os
-from datetime import datetime
 from snowslide.functions import *
 
 # Module logger
