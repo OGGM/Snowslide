@@ -1,16 +1,17 @@
 """Useful functions used in the diferents versions of snowslide"""
 
 import os
-import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 import rasterio
 from rasterio.windows import Window
 from rasterio.enums import Resampling
-import pysheds
-from pysheds.grid import Grid
 import pandas as pd
+try:
+    from pysheds.grid import Grid
+except ImportError:
+    pass
 
 # Main functions used in the heart of snowslide simulations
 
@@ -218,7 +219,7 @@ def snow_routing(snd, snd_max, flow_dir, routing):
     routing: str
         Routing method chosen by the users ('mfd' or 'd8')
     """
-    
+
     # Compute the quantity and fraction of snow that should be routed
     snr = snd - snd_max  # snr is the quantity of snow that can be routed for each pixel
     snr[
